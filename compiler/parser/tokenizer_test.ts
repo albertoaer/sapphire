@@ -13,9 +13,9 @@ Deno.test("tokens", () => {
   assertEquals(tk.getTokens("def hello(a) \"hello \"+a end"), [
     { line: 1, type: 'keyword', value: 'def' },
     { line: 1, type: 'identifier', value: 'hello' },
-    { line: 1, type: 'delimiter', value: '(' },
+    { line: 1, type: 'keyword', value: '(' },
     { line: 1, type: 'identifier', value: 'a' },
-    { line: 1, type: 'delimiter', value: ')' },
+    { line: 1, type: 'keyword', value: ')' },
     { line: 1, type: 'string', value: 'hello ' },
     { line: 1, type: 'operator', value: '+' },
     { line: 1, type: 'identifier', value: 'a' },
@@ -30,16 +30,16 @@ Deno.test("tokens", () => {
   ]);
 
   assertEquals(tk.getTokens(";use file.definition"), [
-    { line: 1, type: 'delimiter', value: ';' },
+    { line: 1, type: 'keyword', value: ';' },
     { line: 1, type: 'keyword', value: 'use' },
     { line: 1, type: 'identifier', value: 'file' },
-    { line: 1, type: 'delimiter', value: '.' },
+    { line: 1, type: 'keyword', value: '.' },
     { line: 1, type: 'identifier', value: 'definition' }
   ]);
 
   assertEquals(tk.getTokens("desc..1.2.2 4..5"), [
     { line: 1, type: 'identifier', value: 'desc' },
-    { line: 1, type: 'delimiter', value: '.' },
+    { line: 1, type: 'keyword', value: '.' },
     { line: 1, type: 'float', value: '.1' },
     { line: 1, type: 'float', value: '.2' },
     { line: 1, type: 'float', value: '.2' },

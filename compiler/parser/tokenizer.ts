@@ -1,20 +1,27 @@
-import { ParserError, Token } from './parser.ts';
+import { ParserError } from './common.ts';
 
-const keywords = [
+export type Token = {
+  line: number,
+  type: 'keyword' | 'identifier' | 'operator' | 'int' | 'float' | 'string',
+  value: string
+}
+
+export const Keywords = [
   'def', 'except', 'extend', 'open', 'use', 'it',
   'if','then', 'end', 'struct', 'priv', 'as',
-  'into', 'this', 'ensured', 'implicit'
-]
+  'into', 'this', 'ensured', 'implicit',
+  '(', ')', '[', ']', '{', '}', ';', ',', '.'
+] as const
 
-const isOpChar = (c: string) => c.length == 1 && '^*+-%&$/@!|'.includes(c)
-
-const isDelimiter = (c: string) => c.length == 1 && '()[]{};'.includes(c)
+const isOpChar = (c: string) => c.length == 1 && '^*+-%&$/@!|='.includes(c)
 
 const isIdChar = (c: string) => c.length == 1 && c.match(/[a-z_]/i) != null
 
 const isNumChar = (c: string) => c.length == 1 && c.match(/[0-9]/) != null
 
 const isSpacer = (c: string) => c.length == 1 && '\n\t '.includes(c)
+
+const isKeyword = (c: string) => (Keywords as readonly string[]).includes(c);
 
 const commentMark = '#'
 
@@ -25,9 +32,9 @@ type tkStep = 'start' | 'comment' | { type: '.' } | {
 
 function stepToToken(step: tkStep): Omit<Token, 'line'>[] {
   if (step === 'start' || step === 'comment') return [];
-  if (step.type === '.') return [{ type: 'delimiter', value: step.type }];
+  if (step.type === '.') return [{ type: 'keyword', value: step.type }];
   if (step.type === 'id') return [{
-    type: keywords.includes(step.value) ? 'keyword' : 'identifier', value: step.value
+    type: isKeyword(step.value) ? 'keyword' : 'identifier', value: step.value
   }];
   return [{
     type: ({
@@ -35,7 +42,7 @@ function stepToToken(step: tkStep): Omit<Token, 'line'>[] {
       'str': 'string',
       'num': 'int',
       'num.': 'float',
-      'delim': 'delimiter'
+      'delim': 'keyword'
     } as const)[step.type],
     value: step.value
   }];
@@ -49,7 +56,7 @@ function startOfTk(value: string): tkStep {
   if (value === '"') return { value: '', type: 'str' };
   if (isSpacer(value)) return 'start';
   if (value === commentMark) return 'comment';
-  if (isDelimiter(value)) return { value, type: 'delim' };
+  if (isKeyword(value)) return { value, type: 'delim' };
   throw new Error(`Unexpected ${value}`);
 }
 
