@@ -13,7 +13,9 @@ export const Keywords = [
   '(', ')', '[', ']', '{', '}', ';', ',', '.'
 ] as const
 
-const isOpChar = (c: string) => c.length == 1 && '^*+-%&$/@!|='.includes(c)
+export const OperatorList = '^*+-%&$/@!|=<>';
+
+const isOpChar = (c: string) => c.length == 1 && OperatorList.includes(c)
 
 const isIdChar = (c: string) => c.length == 1 && c.match(/[a-z_]/i) != null
 
@@ -105,5 +107,47 @@ export class Tokenizer {
       throw new ParserError(line, String(e));
     }
     return collected;
+  }
+
+  getTokenList(source: string): TokenList {
+    return new TokenList(this.getTokens(source));
+  }
+}
+
+export type TokenExpect = { type: Exclude<Token['type'], 'keyword'> } | { value: typeof Keywords[number] };
+
+export class TokenList {
+  private current = 0;
+
+  constructor(public readonly tokens: Token[]) {}
+
+  get empty(): boolean { return this.current >= this.tokens.length }
+
+  nextIs(expect: TokenExpect): Token | undefined {
+    if (this.empty) return undefined;
+    const token = this.tokens[this.current];
+    if (
+      ('value' in expect && token.type == 'keyword' && token.value == expect.value) ||
+      ('type' in expect && token.type == expect.type)
+    ) {
+      this.current++;
+      return token;
+    }
+    return undefined;
+  }
+
+  expectNext(expect: TokenExpect): Token {
+    const token = this.nextIs(expect);
+    if (!token) throw new ParserError(
+      this.tokens[this.current].line ?? this.tokens[this.current-1].line ?? 1,
+      `Expecting ${'type' in expect ? expect.type : expect.value}`
+    );
+    return token;
+  }
+
+  unexpect() {
+    if (!this.empty) throw new ParserError(
+      this.tokens[this.current].line, `Unexpected ${this.tokens[this.current].value}`
+    );
   }
 }
