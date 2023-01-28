@@ -123,6 +123,8 @@ export class TokenList {
 
   get empty(): boolean { return this.current >= this.tokens.length }
 
+  get line(): number { return this.tokens[this.current].line ?? this.tokens[this.current-1].line ?? 1 }
+
   nextIs(expect: TokenExpect): Token | undefined {
     if (this.empty) return undefined;
     const token = this.tokens[this.current];
@@ -139,7 +141,7 @@ export class TokenList {
   expectNext(expect: TokenExpect): Token {
     const token = this.nextIs(expect);
     if (!token) throw new ParserError(
-      this.tokens[this.current].line ?? this.tokens[this.current-1].line ?? 1,
+      this.line,
       `Expecting ${'type' in expect ? expect.type : expect.value}`
     );
     return token;
