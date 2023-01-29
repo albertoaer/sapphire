@@ -152,4 +152,8 @@ export class TokenList {
       this.tokens[this.current].line, `Unexpected ${this.tokens[this.current].value}`
     );
   }
+
+  emitError(msg: string, line?: number): never {
+    throw new ParserError(line ?? this.line, msg);
+  }
 }
