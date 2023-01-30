@@ -58,6 +58,7 @@ export class ModuleParser {
   }
 
   parseExpression(): DirtyExpression {
+    if (this.tokens.nextIs({ value: '.' })) return { id: 'none', nodes: []  };
     const ex = this.tryParseLiteral();
     if (ex) return { id: 'literal', nodes: [ex] };
     this.tokens.emitError('Expecting expression');
