@@ -10,7 +10,7 @@ export const Keywords = [
   'def', 'except', 'extend', 'open', 'use', 'it',
   'if','then', 'end', 'struct', 'priv', 'as',
   'into', 'this', 'ensured', 'implicit',
-  '(', ')', '[', ']', '{', '}', ';', ',', '.', ':'
+  '(', ')', '[', ']', '{', '}', ';', ',', '.', ':', '_'
 ] as const
 
 export const OperatorList = '^*+-%&$/@!|=<>';
