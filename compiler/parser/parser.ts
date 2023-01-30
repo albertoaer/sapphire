@@ -8,7 +8,7 @@ export class ModuleParser {
     private readonly tokens: TokenList,
   ) {}
 
-  private tryParseLiteral(): tree.SappLiteral | undefined {
+  tryParseLiteral(): tree.SappLiteral | undefined {
     const tk =
       this.tokens.nextIs({ type: 'string' }) ??
       this.tokens.nextIs({ type: 'float' }) ??
@@ -22,7 +22,7 @@ export class ModuleParser {
     }
   }
 
-  private parseName(init: string): string[] {
+  parseName(init: string): string[] {
     const route = [init];
     while (this.tokens.nextIs({ value: '.' })) {
       route.push(this.tokens.expectNext({ type: 'identifier' }).value);
@@ -30,7 +30,7 @@ export class ModuleParser {
     return route;
   }
 
-  private parseType(): DirtyType {
+  parseType(): DirtyType {
     const line = this.tokens.line;
     let base: DirtyType['base'];
     if (this.tokens.nextIs({ value: '[' })) {
@@ -57,7 +57,7 @@ export class ModuleParser {
     return { array, base, line }
   }
 
-  private parseExpression(): DirtyExpression {
+  parseExpression(): DirtyExpression {
     const ex = this.tryParseLiteral();
     if (ex) return { id: 'literal', nodes: [ex] };
     this.tokens.emitError('Expecting expression');
@@ -71,7 +71,7 @@ export class ModuleParser {
     return struct;
   }
 
-  private parseArgList(end: TokenExpect): DirtyArgList {
+  parseArgList(end: TokenExpect): DirtyArgList {
     const args: DirtyArgList = [];
     if (!this.tokens.nextIs(end)) {
       do {
@@ -83,7 +83,7 @@ export class ModuleParser {
     return args;
   }
 
-  private parseHeuristicList(end: TokenExpect): DirtyHeuristicList {
+  parseHeuristicList(end: TokenExpect): DirtyHeuristicList {
     const args: DirtyHeuristicList = [];
     if (!this.tokens.nextIs(end)) {
       do {
@@ -98,7 +98,7 @@ export class ModuleParser {
     return args;
   }
 
-  private parseFunc(name: string, struct?: DirtyHeuristicList): DirtyFunc {
+  parseFunc(name: string, struct?: DirtyHeuristicList): DirtyFunc {
     const line = this.tokens.line;
     const args = this.parseArgList({ value: ')'});
     const expectedReturn = this.tokens.nextIs({ value: ':' }) ? this.parseType() : undefined;
@@ -109,14 +109,14 @@ export class ModuleParser {
     return { args, name, expectedReturn, struct, source, line }
   }
 
-  private parseMethod(): DirtyFunc {
+  parseMethod(): DirtyFunc {
     const args = this.parseHeuristicList({ value: ']' });
     const name = this.tokens.nextIs({ type: 'identifier' })?.value ?? '';
     this.tokens.expectNext({ value: '(' });
     return this.parseFunc(name, args);
   }
 
-  private parseUse() {
+  parseUse() {
     const line = this.tokens.line;
     const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
     if (this.tokens.nextIs({ value: 'as' }))
@@ -124,7 +124,7 @@ export class ModuleParser {
     else this.generator.useMod(route, !!this.tokens.nextIs({ value: 'into'}), line);
   }
 
-  private parseDef() {
+  parseDef() {
     const name = this.tokens.expectNext({ type: 'identifier' }).value;
     const functions: DirtyFunc[] = [];
     const structs: DirtyStruct[] = [];
