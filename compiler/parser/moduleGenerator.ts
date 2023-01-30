@@ -1,11 +1,18 @@
 import { ParserError } from "./common.ts";
 import * as tree from './tree.ts';
 
-export type DirtyType = Omit<tree.SappType, 'base'> & { base: string[] | DirtyType[] }
+export type DirtyType = Omit<tree.SappType, 'base'> & {
+  base: string[] | tree.SappLiteral | DirtyType[]
+}
 
 export type DirtyArgList = {
   name: string | null,
   type: DirtyType
+}[]
+
+export type DirtyHeuristicList = {
+  name: string | null,
+  type: DirtyType | null
 }[]
 
 type ArgList = {
@@ -17,12 +24,12 @@ export type DirtyExpression = Omit<tree.SappExpression, 'nodes'> & {
   nodes: (Exclude<tree.SappExpression['nodes'][number], number | tree.SappFunc> | string[])[]
 }
 
-export type DirtyStruct = Omit<tree.SappStruct, 'types'> & { types: DirtyType[] }
+export type DirtyStruct = Omit<tree.SappStruct, 'types'> & { types: DirtyType[], line: number }
 
 export type DirtyFunc = Omit<tree.SappFunc, 'args' | 'source' | 'return' | 'struct'> & {
   source: DirtyExpression[],
   args: DirtyArgList,
-  struct?: DirtyArgList,
+  struct?: DirtyHeuristicList,
   expectedReturn: DirtyType | undefined
 }
 
@@ -56,14 +63,14 @@ export class ModuleGenerator {
     }
   }
 
-  useMod(route: string[], into: boolean, line: number) {
+  useMod(route: string[], into: boolean, line: number, importName?: string) {
     if (route.length === 0) throw new ParserError(line, 'Invalid route');
     if (this.req) {
       const mod = this.req(route);
       if (mod) {
         if (into) for (const [name, def] of Object.entries(mod.defs))
           this.ctx.set(name, def);
-        else this.ctx.set(route.at(-1) as string, mod);
+        else this.ctx.set(importName ?? route.at(-1) as string, mod);
       } else throw new ParserError(line, 'Module not found');
     } else throw new ParserError(line, 'Rquesting modules is disabled');
   }
@@ -89,6 +96,7 @@ export class ModuleGenerator {
   }
 
   private resolveType({ array, base, line }: DirtyType): tree.SappType {
+    if ('type' in base) return { array, line, base };
     if (base.length === 0) throw new ParserError(line, 'Invalid type signature');
     if (typeof base[0] === 'string') {
       let tp = this.globalName(base[0]);
@@ -103,37 +111,46 @@ export class ModuleGenerator {
     } else return { array, line, base: (base as DirtyType[]).map(this.resolveType.bind(this)) }
   }
 
-  private getFuncStruct(structs: tree.SappStruct[], fields: tree.SappType[]): tree.SappStruct {
-    const filtered = structs.filter(x => x.types.length === fields.length);
-    for (const struct of filtered) {
-      let i = 0;
-      for (; i < struct.types.length; i++)
-        if (!tree.compareTypes(struct.types[i], fields[i])) break;
-      if (i == struct.types.length) return struct;
+  private pushNewStruct(structs: tree.SappStruct[], dirties: DirtyStruct[]) {
+    for (const dirty of dirties) {
+      const struct = { types: dirty.types.map(this.resolveType.bind(this)) };
+      if (structs.find(x => x.types.length === struct.types.length && x.types.every((v, i) => 
+        tree.compareTypes(struct.types[i], v)
+      ))) throw new ParserError(dirty.line, 'Repeated struct');
+      structs.push(struct);
     }
-    throw new ParserError(fields[0].line, 'Incompatible struct')
   }
 
-  private getFunctionContext(fn: DirtyFunc): FunctionContext {
+  private inferStructTypes(structs: tree.SappStruct[], fields: DirtyHeuristicList, line: number): [tree.SappStruct, ArgList] {
+    const splitted = fields.map(x => [x.name, x.type ? this.resolveType(x.type) : null] as [string | null, tree.SappType | null]);
+    const filtered = structs.filter(x => x.types.length === fields.length &&
+      x.types.every((v, i) => splitted[i][1] === null || tree.compareTypes(v, splitted[i][1] as tree.SappType)));
+    if (filtered.length === 0) throw new ParserError(line, 'Struct mismatch');
+    if (filtered.length > 1) throw new ParserError(line, 'Struct ambiguity');
+    return [filtered[0], splitted.map((v, i) => { return { name: v[0], type: filtered[0].types[i] } })]; 
+  }
+
+  private getFunctionContext(fn: DirtyFunc, struct?: ArgList): FunctionContext {
     return {
       expectedReturn: fn.expectedReturn ? this.resolveType(fn.expectedReturn) : null,
       args: fn.args.map(x => { return { name: x.name, type: this.resolveType(x.type) } }),
-      struct: fn.struct ? fn.struct.map(x => { return { name: x.name, type: this.resolveType(x.type) } }) : undefined,
+      struct,
       vars: undefined
     }
   }
 
   private buildDefinitions() {
     for (const [def, structs, funcs] of this.defs.values()) {
-      def.structs.push(...structs.map(x => { return { types: x.types.map(this.resolveType.bind(this)) }}))
+      this.pushNewStruct(def.structs, structs);
       for (const func of funcs) {
-        const ctx = this.getFunctionContext(func);
+        const [struct, structargs] = func.struct ? this.inferStructTypes(def.structs, func.struct, func.line) : [undefined, undefined];
+        const ctx = this.getFunctionContext(func, structargs);
         if (ctx.struct !== undefined && ctx.struct.length == 0) throw new ParserError(func.line, 'Empty struct is not allowed');
         const fn: PrecalculatedFunc = {
           name: func.name,
           args: ctx.args.map(x => x.type),
           source: [],
-          struct: ctx.struct ? this.getFuncStruct(def.structs, ctx.struct.map(x => x.type)) : undefined,
+          struct,
           return: 'not calculated',
           line: func.line
         }
