@@ -51,4 +51,19 @@ Deno.test("tokens", () => {
     { line: 1, type: 'keyword', value: 'def' },
     { line: 2, type: 'identifier', value: 'matters' }
   ]);
+
+  assertEquals(tk.getTokens(`
+  (bool x),
+    false true
+  ;
+  `), [
+    { line: 2, type: 'keyword', value: '(' },
+    { line: 2, type: 'identifier', value: 'bool' },
+    { line: 2, type: 'identifier', value: 'x' },
+    { line: 2, type: 'keyword', value: ')' },
+    { line: 2, type: 'keyword', value: ',' },
+    { line: 3, type: 'keyword', value: 'false' },
+    { line: 3, type: 'keyword', value: 'true' },
+    { line: 4, type: 'keyword', value: ';' },
+  ]);
 });

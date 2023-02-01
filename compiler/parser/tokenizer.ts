@@ -9,7 +9,7 @@ export type Token = {
 export const Keywords = [
   'def', 'except', 'extend', 'open', 'use', 'it',
   'if','then', 'end', 'struct', 'priv', 'as',
-  'into', 'this', 'ensured', 'implicit',
+  'into', 'this', 'ensured', 'implicit', 'true', 'false',
   '(', ')', '[', ']', '{', '}', ';', ',', '.', ':', '_'
 ] as const
 
@@ -123,7 +123,7 @@ export class TokenList {
 
   get empty(): boolean { return this.current >= this.tokens.length }
 
-  get line(): number { return this.tokens[this.current].line ?? this.tokens[this.current-1].line ?? 1 }
+  get line(): number { return this.tokens[this.current]?.line ?? this.tokens[this.current-1]?.line ?? 1 }
 
   nextIs(expect: TokenExpect): Token | undefined {
     if (this.empty) return undefined;
@@ -155,5 +155,9 @@ export class TokenList {
 
   emitError(msg: string, line?: number): never {
     throw new ParserError(line ?? this.line, msg);
+  }
+
+  remain(): Token[] {
+    return this.tokens.slice(this.current);
   }
 }
