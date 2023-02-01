@@ -30,28 +30,39 @@ export type DirtyFunc = Omit<tree.SappFunc, 'args' | 'source' | 'return' | 'stru
   source: DirtyExpression[],
   args: DirtyArgList,
   struct?: DirtyHeuristicList,
-  expectedReturn: DirtyType | undefined
+  return?: DirtyType
 }
 
-type PrecalculatedFunc = Omit<tree.SappFunc, 'return'> & {
-  return: tree.SappType | 'not calculated'
-}
+type PrecalculatedFunc = Omit<tree.SappFunc, 'return'> & { return?: tree.SappType }
 
 type FunctionContext = {
   expectedReturn: tree.SappType | null,
   args: ArgList,
-  struct: ArgList | undefined,
-  vars: {
+  structargs: ArgList | undefined,
+  source: DirtyExpression[],
+  vars?: {
     father: FunctionContext['vars'] | null,
     origin: number,
-    types: { [alias:string]: tree.SappType }
-  } | undefined
+    types: { [alias: string]: tree.SappType }
+  }
 }
+
+type FunctionOverloads = { [name: string]: {
+  args: tree.SappType[]
+}[] } // Ensures only one function with the same name and args
+
+type MethodOverloads = { [name: string]: {
+  args: tree.SappType[],
+  consistencyReturnGroup: FunctionContext[], // reference to the consistency group
+  line: number, // first occurrence
+  structs: tree.SappStruct[] // already matched structs
+}[] } // Ensures as many functions with the same name and args per struct
 
 export class ModuleGenerator {
   private readonly ctx: Map<string, tree.SappModule | tree.SappDef> = new Map();
   private readonly defs: Map<string, [tree.SappDef, DirtyStruct[], DirtyFunc[]]> = new Map();
-  private readonly funcs: [PrecalculatedFunc, DirtyExpression[], FunctionContext][] = [];
+  private readonly funcs: [FunctionContext, PrecalculatedFunc, DirtyExpression[]][] = [];
+  private readonly consistencyReturn: FunctionContext[][] = [];
 
   constructor(
     private readonly route: tree.SappModuleRoute,
@@ -84,8 +95,7 @@ export class ModuleGenerator {
     this.defs.set(name, [{
       name,
       origin: this.route,
-      functions: [],
-      structs: []
+      functions: []
     }, structs, funcs]);
   }
 
@@ -111,62 +121,118 @@ export class ModuleGenerator {
     } else return { array, line, base: (base as DirtyType[]).map(this.resolveType.bind(this)) }
   }
 
-  private pushNewStruct(structs: tree.SappStruct[], dirties: DirtyStruct[]) {
+  /**
+   * Collect all the dirty structs as structs without repeats
+   */
+  private collectStructs(dirties: DirtyStruct[]): tree.SappStruct[] {
+    const structs: tree.SappStruct[] = [];
     for (const dirty of dirties) {
       const struct = { types: dirty.types.map(this.resolveType.bind(this)) };
-      if (structs.find(x => x.types.length === struct.types.length && x.types.every((v, i) => 
-        tree.compareTypes(struct.types[i], v)
-      ))) throw new ParserError(dirty.line, 'Repeated struct');
+      if (structs.find(x => tree.compareTypes(x.types, struct.types)))
+        throw new ParserError(dirty.line, 'Repeated struct');
       structs.push(struct);
     }
+    return structs;
   }
 
-  private inferStructTypes(structs: tree.SappStruct[], fields: DirtyHeuristicList, line: number): [tree.SappStruct, ArgList] {
+  /**
+   * Return the struct and arglist from the heuristic list matching types and unknown types
+   * Ambiguity and mismatch are taken into account
+   */
+  private inferStructTypes(
+    structs: tree.SappStruct[],
+    fields: DirtyHeuristicList,
+    line: number
+  ): [tree.SappStruct, ArgList] {
     const splitted = fields.map(x => [x.name, x.type ? this.resolveType(x.type) : null] as [string | null, tree.SappType | null]);
     const filtered = structs.filter(x => x.types.length === fields.length &&
-      x.types.every((v, i) => splitted[i][1] === null || tree.compareTypes(v, splitted[i][1] as tree.SappType)));
+      x.types.every((v, i) => splitted[i][1] === null || tree.compareType(v, splitted[i][1] as tree.SappType)));
     if (filtered.length === 0) throw new ParserError(line, 'Struct mismatch');
     if (filtered.length > 1) throw new ParserError(line, 'Struct ambiguity');
     return [filtered[0], splitted.map((v, i) => { return { name: v[0], type: filtered[0].types[i] } })]; 
   }
 
-  private getFunctionContext(fn: DirtyFunc, struct?: ArgList): FunctionContext {
-    return {
-      expectedReturn: fn.expectedReturn ? this.resolveType(fn.expectedReturn) : null,
-      args: fn.args.map(x => { return { name: x.name, type: this.resolveType(x.type) } }),
-      struct,
-      vars: undefined
-    }
-  }
-
-  private buildDefinitions() {
-    for (const [def, structs, funcs] of this.defs.values()) {
-      this.pushNewStruct(def.structs, structs);
-      for (const func of funcs) {
-        const [struct, structargs] = func.struct ? this.inferStructTypes(def.structs, func.struct, func.line) : [undefined, undefined];
-        const ctx = this.getFunctionContext(func, structargs);
-        if (ctx.struct !== undefined && ctx.struct.length == 0) throw new ParserError(func.line, 'Empty struct is not allowed');
-        const fn: PrecalculatedFunc = {
-          name: func.name,
-          args: ctx.args.map(x => x.type),
-          source: [],
-          struct,
-          return: 'not calculated',
-          line: func.line
-        }
-        def.functions.push(fn as tree.SappFunc); // It's tricky but will save time
-        this.funcs.push([fn, func.source, ctx]);
+  private addMethodOverload(
+    overloads: MethodOverloads,
+    ctx: FunctionContext,
+    func: PrecalculatedFunc,
+    struct: tree.SappStruct
+  ) {
+    if (!(func.name in overloads)) overloads[func.name] = [
+      { args: func.args, consistencyReturnGroup: [ctx], structs: [struct], line: func.line }
+    ];
+    else {
+      const ov = overloads[func.name].find(x => tree.compareTypes(x.args, func.args));
+      if (!ov) overloads[func.name].push({ args: func.args, consistencyReturnGroup: [ctx], structs: [struct], line: func.line });
+      else {
+        if (ov.structs.includes(struct))
+          throw new ParserError(func.line, 'Repeated function overload for struct');
+        ov.consistencyReturnGroup.push(ctx);
+        ov.structs.push(struct);
       }
     }
   }
 
-  private validateFunctions() {
-    for (const func of this.funcs) {
-      console.log(...func)
+  private addFunctionOverload(overloads: FunctionOverloads, func: PrecalculatedFunc) {
+    if (!(func.name in overloads)) overloads[func.name] = [ { args: func.args } ];
+    else {
+      if (overloads[func.name].find(x => tree.compareTypes(x.args, func.args)))
+        throw new ParserError(func.line, 'Repeated function overload');
+      overloads[func.name].push({ args: func.args });
     }
   }
 
-  getModule(): tree.SappModule {
+  /**
+   * Collect all the dirty functions as functions without repeats matching the structs
+   */
+  private collectFunctions(placeholder: tree.SappFunc[], dirties: DirtyFunc[], structs: tree.SappStruct[]) {
+    const methods: MethodOverloads = {};
+    const funcs: FunctionOverloads = {};
+    for (const func of dirties) {
+      const [struct, structargs] = func.struct ?
+        this.inferStructTypes(structs, func.struct, func.line) : [undefined, undefined];
+      const args = func.args.map(x => { return { name: x.name, type: this.resolveType(x.type) } });
+
+      const pfn: PrecalculatedFunc = {
+        name: func.name, source: [], struct, args: args.map(x => x.type), line: func.line
+      };
+
+      const ctx: FunctionContext = {
+        args, structargs, source: func.source, expectedReturn: func.return ? this.resolveType(func.return) : null
+      };
+
+      if (struct) this.addMethodOverload(methods, ctx, pfn, struct);
+      else this.addFunctionOverload(funcs, pfn);
+      
+      placeholder.push(pfn as tree.SappFunc); // It's tricky but will save time
+      this.funcs.push([ctx, pfn, func.source]);
+    }
+    Object.values(methods).forEach(x => x.forEach(x => {
+      if (x.structs.length !== structs.length)
+        throw new ParserError(x.line, 'Not matched every struct');
+    }));
+  }
+
+  private buildDefinitions() {
+    for (const [def, dirtyStructs, funcs] of this.defs.values()) {
+      const structs = this.collectStructs(dirtyStructs);
+      this.collectFunctions(def.functions, funcs, structs);
+    }
+    /*
+      At this point for each definition is ensured:
+      1 - Structs have the corrects types with no repeats
+      2 - Functions should have a matching struct
+      3 - Every function overload must have unique type signature
+      4 - Every struct should have the same number of overloaded functions
+    */
+  }
+
+  private validateFunctions() {
+    for (const func of this.funcs) {
+    }
+  }
+
+  generateModule(): tree.SappModule {
     this.buildDefinitions();
     this.validateFunctions();
     return {

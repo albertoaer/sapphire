@@ -1,11 +1,13 @@
 import { TokenList, TokenExpect } from './tokenizer.ts';
 import * as tree from './tree.ts';
-import { ModuleGenerator, DirtyArgList, DirtyStruct, DirtyFunc, DirtyType, DirtyExpression, DirtyHeuristicList } from './moduleGenerator.ts';
+import {
+  ModuleGenerator, DirtyArgList, DirtyStruct, DirtyFunc, DirtyType, DirtyExpression, DirtyHeuristicList
+} from './moduleGenerator.ts';
 
 export class ModuleParser {
   constructor(
-    private readonly generator: ModuleGenerator,
     private readonly tokens: TokenList,
+    private readonly generator: ModuleGenerator,
   ) {}
 
   tryParseLiteral(): tree.SappLiteral | undefined {
@@ -102,12 +104,12 @@ export class ModuleParser {
   parseFunc(name: string, struct?: DirtyHeuristicList): DirtyFunc {
     const line = this.tokens.line;
     const args = this.parseArgList({ value: ')'});
-    const expectedReturn = this.tokens.nextIs({ value: ':' }) ? this.parseType() : undefined;
+    const ret = this.tokens.nextIs({ value: ':' }) ? this.parseType() : undefined;
     const source: DirtyExpression[] = [];
     do {
       source.push(this.parseExpression());
     } while (this.tokens.nextIs({ value: ',' }));
-    return { args, name, expectedReturn, struct, source, line }
+    return { args, name, return: ret, struct, source, line }
   }
 
   parseMethod(): DirtyFunc {
@@ -166,8 +168,8 @@ export class Parser {
     const route = this.io.solveModuleRoute(descriptor);
     if (!(route in this.moduleInfo)) {
       const generator = new ModuleGenerator(route, this.parseModule);
-      new ModuleParser(generator, this.io.getModuleTokens(route)).parse();
-      const mod = generator.getModule();
+      new ModuleParser(this.io.getModuleTokens(route), generator).parse();
+      const mod = generator.generateModule();
       this.moduleInfo[route] = { idx: this.moduleRelations.push([]), mod };
       return mod;
     }
