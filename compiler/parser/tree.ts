@@ -27,7 +27,6 @@ export type SappStruct = {
 export type SappDef = {
   readonly name: string,
   readonly origin: SappModuleRoute,
-  readonly structs: SappStruct[],
   readonly functions: SappFunc[]
 }
 
@@ -51,7 +50,7 @@ function compareArrayData(a: SappType, b: SappType): boolean {
   return false;
 }
 
-export function compareTypes(a: SappType, b: SappType): boolean {
+export function compareType(a: SappType, b: SappType): boolean {
   if (!compareArrayData(a, b)) return false;
   if ('value' in a.base) {
     if (!('value' in b.base)) return false;
@@ -62,11 +61,29 @@ export function compareTypes(a: SappType, b: SappType): boolean {
     if (!Array.isArray(b.base)) return false;
     if (a.base.length != b.base.length) return false;
     for (let i = 0; i < a.base.length; i++)
-      if (!compareTypes(a.base[i], b.base[i]))
+      if (!compareType(a.base[i], b.base[i]))
         return false;
     return true;
   }
   if (Array.isArray(b.base)) return false;
   // Can not be two equal named definitions in the same origin
   return compareDefs(a.base, b.base);
+}
+
+export function compareTypes(a: SappType[], b: SappType[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((v, i) => compareType(v, b[i]));
+}
+
+export function sappTypeRepr(type: SappType): string {
+  let repr = "";
+  if (Array.isArray(type.base)) repr += '[' + type.base.map(sappTypeRepr).join(',') + ']';
+  else if ('value' in type.base) repr += type.base.value;
+  else repr += `${type.base.origin}.${type.base.name}`;
+  if (type.array) {
+    repr += '{';
+    if (type.array.size) repr += type.array.size.toString();
+    repr += '}';
+  }
+  return repr;
 }
