@@ -1,11 +1,25 @@
-export type SappLiteral ={
+export type SappLiteral = {
   readonly value: string,
   readonly type: SappDef
 }
 
 export type SappExpression = {
-  readonly id: string,
-  readonly nodes: (SappExpression | SappLiteral | number | SappFunc)[]
+  readonly id: 'if',
+  readonly cond: SappExpression,
+  readonly then: SappExpression,
+  readonly else: SappExpression
+} | {
+  readonly id: 'call',
+  readonly func: SappExpression | SappFunc,
+  readonly args: SappExpression[]
+} | {
+  readonly id: 'literal',
+  readonly value: SappLiteral
+} | {
+  readonly id: 'group',
+  readonly expr: SappExpression[]
+} | {
+  readonly id: 'none'
 }
 
 export type SappModuleDescriptor = string[] | 'kernel'
