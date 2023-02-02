@@ -20,8 +20,26 @@ type ArgList = {
   type: tree.SappType
 }[]
 
-export type DirtyExpression = Omit<tree.SappExpression, 'nodes'> & {
-  nodes: (Exclude<tree.SappExpression['nodes'][number], number | tree.SappFunc> | string[])[]
+export type DirtyExpression = {
+  readonly id: 'if',
+  readonly cond: DirtyExpression,
+  readonly then: DirtyExpression,
+  readonly else: DirtyExpression
+} | {
+  readonly id: 'call',
+  readonly func: DirtyExpression | string[],
+  readonly args: DirtyExpression[]
+} | {
+  readonly id: 'literal',
+  readonly value: tree.SappLiteral
+} | {
+  readonly id: 'value',
+  readonly of: string[]
+} | {
+  readonly id: 'group',
+  readonly expr: DirtyExpression[]
+} | {
+  readonly id: 'none'
 }
 
 export type DirtyStruct = Omit<tree.SappStruct, 'types'> & { types: DirtyType[], line: number }
@@ -221,7 +239,7 @@ export class ModuleGenerator {
     /*
       At this point for each definition is ensured:
       1 - Structs have the corrects types with no repeats
-      2 - Functions should have a matching struct
+      2 - Functions have its matching struct assigned or no struct
       3 - Every function overload must have unique type signature
       4 - Every struct should have the same number of overloaded functions
     */
