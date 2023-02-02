@@ -1,4 +1,4 @@
-import { TokenList, TokenExpect } from './tokenizer.ts';
+import { TokenList, TokenExpect, Token } from './tokenizer.ts';
 import * as tree from './tree.ts';
 import {
   ModuleGenerator, DirtyArgList, DirtyStruct, DirtyFunc, DirtyType, DirtyExpression, DirtyHeuristicList
@@ -10,15 +10,21 @@ export class ModuleParser {
     private readonly generator: ModuleGenerator,
   ) {}
 
+  remain(): Token[] {
+    return this.tokens.remain();
+  }
+
   tryParseLiteral(): tree.SappLiteral | undefined {
     const tk =
       this.tokens.nextIs({ type: 'string' }) ??
       this.tokens.nextIs({ type: 'float' }) ??
-      this.tokens.nextIs({ type: 'int' });
+      this.tokens.nextIs({ type: 'int' }) ??
+      this.tokens.nextIs({ value: 'true' }) ??
+      this.tokens.nextIs({ value: 'false' });
     if (tk) {
       const kernel = this.generator.getMod('kernel');
       if (!kernel) this.tokens.emitError(`No kernel provided`);
-      const type = kernel.defs[tk.type];
+      const type = kernel.defs[tk.type === 'keyword' ? 'bool' : tk.type];
       if (!type) this.tokens.emitError(`Kernel does not provide ${tk.type}`);
       return { type, value: tk.value };
     }
@@ -59,14 +65,60 @@ export class ModuleParser {
     return { array, base, line }
   }
 
-  parseExpression(): DirtyExpression {
-    if (this.tokens.nextIs({ value: '.' })) return { id: 'none', nodes: []  };
-    const ex = this.tryParseLiteral();
-    if (ex) return { id: 'literal', nodes: [ex] };
+  tryParseExpressionGroup(open: TokenExpect, close: TokenExpect): DirtyExpression[] | undefined {
+    if (!this.tokens.nextIs(open)) return undefined;
+    if (this.tokens.nextIs(close)) return [];
+    const group = [];
+    do group.push(this.parseExpression());
+    while (this.tokens.nextIs({ value: ',' }));
+    this.tokens.expectNext(close);
+    return group;
+  }
+
+  parseIf(notEnd?: boolean): DirtyExpression {
+    const cond = this.parseExpression();
+    this.tokens.expectNext({ value: 'then' });
+    const then = this.parseExpression();
+    this.tokens.expectNext({ value: 'else' });
+    const branch = this.tokens.nextIs({ value: 'if' }) ? this.parseIf(true) : this.parseExpression();
+    if (!notEnd) this.tokens.expectNext({ value: 'end' });
+    return { id: 'if', cond, then, else: branch };
+  }
+
+  parseExpressionTerm(): DirtyExpression {
+    if (this.tokens.nextIs({ value: 'if' })) return this.parseIf();
+    if (this.tokens.nextIs({ value: '.' })) return { id: 'none' };
+    const g = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
+    if (g !== undefined) {
+      if (g.length === 1) return g[0];
+      return { id: 'group', expr: g };
+    }
+    const l = this.tryParseLiteral();
+    if (l !== undefined) return { id: 'literal', value: l };
+    const id = this.tokens.nextIs({ type: 'identifier' });
+    if (id) {
+      const name = this.parseName(id.value);
+      const args = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
+      if (args !== undefined) return { id: 'call', func: name, args: args };
+      return { id: 'value', of: name };
+    }
     this.tokens.emitError('Expecting expression');
   }
 
-  private parseStruct(): DirtyStruct {
+  parseExpression(): DirtyExpression {
+    const op = this.tokens.nextIs({ type: 'operator' });
+    let expr: DirtyExpression = op ? { id: 'call', func: [op.value], args: [this.parseExpressionTerm()] }
+                    : this.parseExpressionTerm();
+
+    let opMiddle = this.tokens.nextIs({ type: 'operator' });
+    while (opMiddle !== undefined) {
+      expr = { id: 'call', func: [opMiddle.value], args: [expr, this.parseExpressionTerm()] };
+      opMiddle = this.tokens.nextIs({ type: 'operator' });
+    }
+    return expr;
+  }
+
+  parseStruct(): DirtyStruct {
     const struct: DirtyStruct = { types: [], line: this.tokens.line };
     if (!this.tokens.nextIs({ value: '_' }))
       do struct.types.push(this.parseType());

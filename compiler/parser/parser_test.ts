@@ -1,5 +1,5 @@
 import { assertThrows, assertEquals } from "https://deno.land/std@0.174.0/testing/asserts.ts";
-import { createParserFor } from "./commont_test.ts";
+import { createParserFor, modules } from "./common_test.ts";
 
 Deno.test('must parse', () => {
   assertEquals(createParserFor('int{4}').parseType(),
@@ -17,10 +17,55 @@ Deno.test('must parse', () => {
     { name: null, type: { base: ['float'], line: 1, array: { size: undefined } }},
     { name: 'var', type: null },
   ]);
-  assertEquals(createParserFor('int x, string y)').parseArgList({ value: ')' }), [
-    { name: 'x', type: { base: ['int'], line: 1, array: undefined } },
-    { name: 'y', type: { base: ['string'], line: 1, array: undefined } },
-  ]);
+  {
+    const expr = createParserFor('int x, string y) () . end');
+    assertEquals(expr.parseArgList({ value: ')' }), [
+      { name: 'x', type: { base: ['int'], line: 1, array: undefined } },
+      { name: 'y', type: { base: ['string'], line: 1, array: undefined } },
+    ]);
+    assertEquals(expr.remain(), ['(', ')', '.', 'end'].map(x => { return { type: 'keyword', value: x, line: 1 } }));
+  }
+  assertEquals(createParserFor('true').tryParseLiteral(), { type: modules['kernel']['defs']['bool'], value: 'true' });
+  assertEquals(createParserFor('! . + .').parseExpression(), {
+    id: 'call', func: ['+'],
+    args: [{ id: 'call', func: ['!'], args: [{ id: 'none' }] }, { id: 'none' }]
+  });
+  assertEquals(createParserFor('a.b(f.g, 3) * .').parseExpression(), { id: 'call', func: ['*'], args: [
+    {
+      id: 'call', func: ['a', 'b'],
+      args: [
+        { id: 'value', of: ['f', 'g'] },
+        { id: 'literal', value: { type: modules['kernel']['defs']['int'], value: '3' } }
+      ]
+    },
+    { id: 'none' }
+  ] });
+  assertEquals(createParserFor('++a.b.c(false) / .').parseExpression(), { id: 'call', func: ['/'], args: [
+    { id: 'call', func: ['++'], args: [
+      { id: 'call', func: ['a', 'b', 'c'], args: [
+        { id: 'literal', value: { type: modules['kernel']['defs']['bool'], value: 'false' } }
+      ] }
+    ] },
+    { id: 'none' }
+  ] });
+  assertEquals(createParserFor('2 + if smt.fn() then 1 else 0 end').parseExpression(), { id: 'call', func: ['+'], args: [
+    { id: 'literal', value: { type: modules['kernel']['defs']['int'], value: '2' } },
+    { id: 'if',
+      cond: { id: 'call', func: ['smt', 'fn'], args: [] },
+      then: { id: 'literal', value: { type: modules['kernel']['defs']['int'], value: '1' } },
+      else: { id: 'literal', value: { type: modules['kernel']['defs']['int'], value: '0' } } }
+  ] });
+  assertEquals(createParserFor('if a then b else if c then d else e end').parseExpression(), {
+    id: 'if',
+    cond: { id: 'value', of: ['a'] },
+    then: { id: 'value', of: ['b'] },
+    else: {
+      id: 'if',
+      cond: { id: 'value', of: ['c'] },
+      then: { id: 'value', of: ['d'] },
+      else: { id: 'value', of: ['e'] }
+    }
+  })
 });
 
 Deno.test('must not parse', () => {
