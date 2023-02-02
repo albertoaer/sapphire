@@ -29,7 +29,7 @@ export type SappFunc = {
   readonly name: string,
   readonly args: SappType[],
   readonly struct: SappStruct | undefined;
-  readonly source: SappExpression[] | `implicit_${string}` | 'ensured',
+  readonly source: SappExpression | `implicit_${string}` | 'ensured',
   readonly return: SappType,
   readonly line: number // Metada for error resolution
 }

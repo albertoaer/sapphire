@@ -39,25 +39,36 @@ export type DirtyExpression = {
   readonly id: 'group',
   readonly expr: DirtyExpression[]
 } | {
+  readonly id: 'index',
+  readonly origin: DirtyExpression,
+  readonly args: DirtyExpression[]
+} | {
+  readonly id: 'get',
+  readonly origin: DirtyExpression
+  readonly name: string[]
+} | {
   readonly id: 'none'
 }
 
 export type DirtyStruct = Omit<tree.SappStruct, 'types'> & { types: DirtyType[], line: number }
 
 export type DirtyFunc = Omit<tree.SappFunc, 'args' | 'source' | 'return' | 'struct'> & {
-  source: DirtyExpression[],
+  source: DirtyExpression,
   args: DirtyArgList,
   struct?: DirtyHeuristicList,
   return?: DirtyType
 }
 
-type PrecalculatedFunc = Omit<tree.SappFunc, 'return'> & { return?: tree.SappType }
+type PrecalculatedFunc = Omit<tree.SappFunc, 'return' | 'source'> & {
+  source?: tree.SappExpression,
+  return?: tree.SappType
+}
 
 type FunctionContext = {
   expectedReturn: tree.SappType | null,
   args: ArgList,
   structargs: ArgList | undefined,
-  source: DirtyExpression[],
+  source: DirtyExpression,
   vars?: {
     father: FunctionContext['vars'] | null,
     origin: number,
@@ -79,7 +90,7 @@ type MethodOverloads = { [name: string]: {
 export class ModuleGenerator {
   private readonly ctx: Map<string, tree.SappModule | tree.SappDef> = new Map();
   private readonly defs: Map<string, [tree.SappDef, DirtyStruct[], DirtyFunc[]]> = new Map();
-  private readonly funcs: [FunctionContext, PrecalculatedFunc, DirtyExpression[]][] = [];
+  private readonly funcs: [FunctionContext, PrecalculatedFunc, DirtyExpression][] = [];
   private readonly consistencyReturn: FunctionContext[][] = [];
 
   constructor(
@@ -212,7 +223,7 @@ export class ModuleGenerator {
       const args = func.args.map(x => { return { name: x.name, type: this.resolveType(x.type) } });
 
       const pfn: PrecalculatedFunc = {
-        name: func.name, source: [], struct, args: args.map(x => x.type), line: func.line
+        name: func.name, struct, args: args.map(x => x.type), line: func.line
       };
 
       const ctx: FunctionContext = {

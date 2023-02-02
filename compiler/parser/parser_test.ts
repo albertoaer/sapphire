@@ -65,7 +65,15 @@ Deno.test('must parse', () => {
       then: { id: 'value', of: ['d'] },
       else: { id: 'value', of: ['e'] }
     }
-  })
+  });
+  assertEquals(createParserFor('a.c[b.c(),2].x.y').parseExpression(), {
+    id: 'get', name: ['x', 'y'], origin: {
+      id: 'index', origin: { id: 'value', of: ['a', 'c'] }, args: [
+        { id: 'call', func: ['b', 'c'], args: [] },
+        { id: 'literal', value: { value: '2', type: modules['kernel']['defs']['int'] } }
+      ]
+    }
+  });
 });
 
 Deno.test('must not parse', () => {
