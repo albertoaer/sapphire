@@ -8,19 +8,19 @@ export const modules: Record<string, tree.SappModule> = {
     route: 'kernel',
     defs: {
       void: {
-        name: 'void', origin: 'kernel', functions: []
+        name: 'void', origin: 'kernel', functions: {}, structs: []
       },
       int: {
-        name: 'int', origin: 'kernel', functions: []
+        name: 'int', origin: 'kernel', functions: {}, structs: []
       },
       bool: {
-        name: 'bool', origin: 'kernel', functions: []
+        name: 'bool', origin: 'kernel', functions: {}, structs: []
       },
       float: {
-        name: 'float', origin: 'kernel', functions: []
+        name: 'float', origin: 'kernel', functions: {}, structs: []
       },
       string: {
-        name: 'string', origin: 'kernel', functions: []
+        name: 'string', origin: 'kernel', functions: {}, structs: []
       }
     }
   }

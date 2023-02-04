@@ -27,50 +27,50 @@ Deno.test('must parse', () => {
   }
   assertEquals(createParserFor('true').tryParseLiteral(), { type: modules['kernel']['defs']['bool'], value: 'true' });
   assertEquals(createParserFor('! . + .').parseExpression(), {
-    id: 'call', func: ['+'],
-    args: [{ id: 'call', func: ['!'], args: [{ id: 'none' }] }, { id: 'none' }]
+    id: 'call', func: ['+'], line: 1,
+    args: [{ id: 'call', func: ['!'], args: [{ id: 'none', line: 1 }], line: 1 }, { id: 'none', line: 1 }]
   });
   assertEquals(createParserFor('a.b(f.g, 3) * .').parseExpression(), { id: 'call', func: ['*'], args: [
     {
-      id: 'call', func: ['a', 'b'],
+      id: 'call', func: ['a', 'b'], line: 1,
       args: [
-        { id: 'value', of: ['f', 'g'] },
-        { id: 'literal', value: { type: modules['kernel']['defs']['int'], value: '3' } }
+        { id: 'value', of: ['f', 'g'], line: 1 },
+        { id: 'literal', value: { type: modules['kernel']['defs']['int'], value: '3' }, line: 1 }
       ]
     },
-    { id: 'none' }
-  ] });
+    { id: 'none', line: 1 }
+  ], line: 1 });
   assertEquals(createParserFor('++a.b.c(false) / .').parseExpression(), { id: 'call', func: ['/'], args: [
     { id: 'call', func: ['++'], args: [
       { id: 'call', func: ['a', 'b', 'c'], args: [
-        { id: 'literal', value: { type: modules['kernel']['defs']['bool'], value: 'false' } }
-      ] }
-    ] },
-    { id: 'none' }
-  ] });
+        { id: 'literal', value: { type: modules['kernel']['defs']['bool'], value: 'false' }, line: 1 }
+      ], line: 1 }
+    ], line: 1 },
+    { id: 'none', line: 1 }
+  ], line: 1 });
   assertEquals(createParserFor('2 + if smt.fn() then 1 else 0 end').parseExpression(), { id: 'call', func: ['+'], args: [
-    { id: 'literal', value: { type: modules['kernel']['defs']['int'], value: '2' } },
-    { id: 'if',
-      cond: { id: 'call', func: ['smt', 'fn'], args: [] },
-      then: { id: 'literal', value: { type: modules['kernel']['defs']['int'], value: '1' } },
-      else: { id: 'literal', value: { type: modules['kernel']['defs']['int'], value: '0' } } }
-  ] });
+    { id: 'literal', value: { type: modules['kernel']['defs']['int'], value: '2' }, line: 1 },
+    { id: 'if', line: 1,
+      cond: { id: 'call', func: ['smt', 'fn'], args: [], line: 1 },
+      then: { id: 'literal', line: 1, value: { type: modules['kernel']['defs']['int'], value: '1' } },
+      else: { id: 'literal', line: 1, value: { type: modules['kernel']['defs']['int'], value: '0' } } }
+  ], line: 1 });
   assertEquals(createParserFor('if a then b else if c then d else e end').parseExpression(), {
-    id: 'if',
-    cond: { id: 'value', of: ['a'] },
-    then: { id: 'value', of: ['b'] },
+    id: 'if', line: 1,
+    cond: { id: 'value', of: ['a'], line: 1 },
+    then: { id: 'value', of: ['b'], line: 1 },
     else: {
-      id: 'if',
-      cond: { id: 'value', of: ['c'] },
-      then: { id: 'value', of: ['d'] },
-      else: { id: 'value', of: ['e'] }
+      id: 'if', line: 1,
+      cond: { id: 'value', of: ['c'], line: 1 },
+      then: { id: 'value', of: ['d'], line: 1 },
+      else: { id: 'value', of: ['e'], line: 1 }
     }
   });
   assertEquals(createParserFor('a.c[b.c(),2].x.y').parseExpression(), {
-    id: 'get', name: ['x', 'y'], origin: {
-      id: 'index', origin: { id: 'value', of: ['a', 'c'] }, args: [
-        { id: 'call', func: ['b', 'c'], args: [] },
-        { id: 'literal', value: { value: '2', type: modules['kernel']['defs']['int'] } }
+    id: 'get', name: ['x', 'y'], line: 1, origin: {
+      id: 'index', line: 1, origin: { id: 'value', of: ['a', 'c'], line: 1 }, args: [
+        { id: 'call', func: ['b', 'c'], args: [], line: 1 },
+        { id: 'literal', value: { value: '2', type: modules['kernel']['defs']['int'] }, line: 1 }
       ]
     }
   });

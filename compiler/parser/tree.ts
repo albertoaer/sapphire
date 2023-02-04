@@ -17,9 +17,15 @@ export type SappExpression = {
   readonly value: SappLiteral
 } | {
   readonly id: 'group',
-  readonly expr: SappExpression[]
+  readonly exprs: SappExpression[]
 } | {
-  readonly id: 'none'
+  readonly id: 'value',
+  readonly of: number,
+  readonly source: 'struct' | 'args' | 'context'
+} | {
+  readonly id: 'build',
+  readonly args: SappExpression[],
+  readonly struct: SappStruct
 }
 
 export type SappModuleDescriptor = string[] | 'kernel'
@@ -28,26 +34,28 @@ export type SappModuleRoute = `file:${string}` | 'kernel' | 'virtual'
 export type SappFunc = {
   readonly name: string,
   readonly args: SappType[],
-  readonly struct: SappStruct | undefined;
+  readonly struct: SappStruct | null;
   readonly source: SappExpression | `implicit_${string}` | 'ensured',
   readonly return: SappType,
+  readonly memberOf: SappDef,
   readonly line: number // Metada for error resolution
 }
 
 export type SappStruct = {
-  readonly types: SappType[]
+  readonly types: SappType[],
+  readonly memberOf: SappDef
 }
 
 export type SappDef = {
   readonly name: string,
   readonly origin: SappModuleRoute,
-  readonly functions: SappFunc[]
+  readonly structs: SappStruct[],
+  readonly functions: { [name: string]: SappFunc[] }
 }
 
 export type SappType = {
-  readonly base: SappDef | SappLiteral | SappType[], // Normal type or tuple
-  readonly array?: { size?: number },
-  readonly line: number // Metada for error resolution
+  readonly base: SappDef | SappLiteral | SappType[] | { inputs: SappType[], output: SappType }, // Normal type or tuple
+  readonly array?: { size?: number }
 }
 
 export type SappModule = {
@@ -73,13 +81,14 @@ export function compareType(a: SappType, b: SappType): boolean {
   if ('value' in b.base) return false;
   if (Array.isArray(a.base)) {
     if (!Array.isArray(b.base)) return false;
-    if (a.base.length != b.base.length) return false;
-    for (let i = 0; i < a.base.length; i++)
-      if (!compareType(a.base[i], b.base[i]))
-        return false;
-    return true;
+    return compareTypes(a.base, b.base);
   }
   if (Array.isArray(b.base)) return false;
+  if ('inputs' in a.base) {
+    if (!('inputs' in b.base)) return false;
+    return compareTypes(a.base.inputs, b.base.inputs) && compareType(a.base.output, b.base.output);
+  }
+  if ('inputs' in b.base) return false;
   // Can not be two equal named definitions in the same origin
   return compareDefs(a.base, b.base);
 }
@@ -91,8 +100,12 @@ export function compareTypes(a: SappType[], b: SappType[]): boolean {
 
 export function sappTypeRepr(type: SappType): string {
   let repr = "";
-  if (Array.isArray(type.base)) repr += '[' + type.base.map(sappTypeRepr).join(',') + ']';
-  else if ('value' in type.base) repr += type.base.value;
+  if (Array.isArray(type.base))
+    repr += '[' + type.base.map(sappTypeRepr).join(',') + ']';
+  else if ('value' in type.base)
+    repr += type.base.value;
+  else if ('inputs' in type.base)
+    repr += '[' + type.base.inputs.map(sappTypeRepr).join(',') + ']:' + sappTypeRepr(type.base.output);
   else repr += `${type.base.origin}.${type.base.name}`;
   if (type.array) {
     repr += '{';
@@ -100,4 +113,17 @@ export function sappTypeRepr(type: SappType): string {
     repr += '}';
   }
   return repr;
+}
+
+export function sappTypeOf(obj: SappFunc | SappDef | SappStruct | SappLiteral): SappType {
+  if ('types' in obj) return sappTypeOf(obj.memberOf);
+  if ('type' in obj) return sappTypeOf(obj.type);
+  if ('functions' in obj) return { base: obj };
+  return { base: { inputs: inputsOf(obj), output: obj.return } };
+}
+
+export function inputsOf(func: SappFunc): SappType[] {
+  const inputs = [...func.args];
+  if (func.struct) inputs.unshift(sappTypeOf(func.struct));
+  return inputs;
 }

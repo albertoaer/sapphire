@@ -3,6 +3,7 @@ import * as tree from './tree.ts';
 import {
   ModuleGenerator, DirtyArgList, DirtyStruct, DirtyFunc, DirtyType, DirtyExpression, DirtyHeuristicList
 } from './moduleGenerator.ts';
+import { ParserError } from './common.ts';
 
 export class ModuleParser {
   constructor(
@@ -75,6 +76,12 @@ export class ModuleParser {
     return group;
   }
 
+  parseBuild(): DirtyExpression {
+    const args = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
+    if (args === undefined) throw new ParserError(this.tokens.line, 'Expecting arguments to build the struct');
+    return { id: 'build', args, line: this.tokens.line};
+  }
+
   parseIf(notEnd?: boolean): DirtyExpression {
     const cond = this.parseExpression();
     this.tokens.expectNext({ value: 'then' });
@@ -82,25 +89,25 @@ export class ModuleParser {
     this.tokens.expectNext({ value: 'else' });
     const branch = this.tokens.nextIs({ value: 'if' }) ? this.parseIf(true) : this.parseExpression();
     if (!notEnd) this.tokens.expectNext({ value: 'end' });
-    return { id: 'if', cond, then, else: branch };
+    return { id: 'if', cond, then, else: branch, line: this.tokens.line };
   }
 
   parseExpressionTerm(): DirtyExpression {
     if (this.tokens.nextIs({ value: 'if' })) return this.parseIf();
-    if (this.tokens.nextIs({ value: '.' })) return { id: 'none' };
+    if (this.tokens.nextIs({ value: '.' })) return { id: 'none', line: this.tokens.line };
     const g = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
     if (g !== undefined) {
       if (g.length === 1) return g[0];
-      return { id: 'group', expr: g };
+      return { id: 'group', exprs: g, line: this.tokens.line };
     }
     const l = this.tryParseLiteral();
-    if (l !== undefined) return { id: 'literal', value: l };
+    if (l !== undefined) return { id: 'literal', value: l, line: this.tokens.line };
     const id = this.tokens.nextIs({ type: 'identifier' });
     if (id) {
       const name = this.parseName(id.value);
       const args = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
-      if (args !== undefined) return { id: 'call', func: name, args: args };
-      return { id: 'value', of: name };
+      if (args !== undefined) return { id: 'call', func: name, args: args, line: this.tokens.line };
+      return { id: 'value', of: name, line: this.tokens.line };
     }
     this.tokens.emitError('Expecting expression');
   }
@@ -112,13 +119,13 @@ export class ModuleParser {
     let accessName = undefined;
     do {
       if ((callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' })) !== undefined)
-        expr = { id: 'call', func: expr, args: callArgs };
+        expr = { id: 'call', func: expr, args: callArgs, line: this.tokens.line };
       if ((indexArgs = this.tryParseExpressionGroup({ value: '[' }, { value: ']' })) !== undefined)
-        expr = { id: 'index', origin: expr, args: indexArgs };
+        expr = { id: 'index', origin: expr, args: indexArgs, line: this.tokens.line };
       if (this.tokens.nextIs({ value: '.' })) {
         const nm = this.tokens.expectNext({ type: 'identifier' });
         accessName = this.parseName(nm.value);
-        expr = { id: 'get', origin: expr, name: accessName };
+        expr = { id: 'get', origin: expr, name: accessName, line: this.tokens.line };
       } else accessName = undefined;
     } while (callArgs !== undefined || indexArgs !== undefined || accessName !== undefined);
     return expr;
@@ -126,12 +133,15 @@ export class ModuleParser {
 
   parseExpression(): DirtyExpression {
     const op = this.tokens.nextIs({ type: 'operator' });
-    let expr: DirtyExpression = op ? { id: 'call', func: [op.value], args: [this.parseExpressionRecursiveTerm()] }
-                    : this.parseExpressionRecursiveTerm();
+    let expr: DirtyExpression = op
+      ? { id: 'call', func: [op.value], args: [this.parseExpressionRecursiveTerm()], line: this.tokens.line }
+      : this.parseExpressionRecursiveTerm();
 
     let opMiddle = this.tokens.nextIs({ type: 'operator' });
     while (opMiddle !== undefined) {
-      expr = { id: 'call', func: [opMiddle.value], args: [expr, this.parseExpressionRecursiveTerm()] };
+      expr = {
+        id: 'call', func: [opMiddle.value], args: [expr, this.parseExpressionRecursiveTerm()], line: this.tokens.line
+      };
       opMiddle = this.tokens.nextIs({ type: 'operator' });
     }
     return expr;
@@ -176,11 +186,11 @@ export class ModuleParser {
     const line = this.tokens.line;
     const args = this.parseArgList({ value: ')'});
     const ret = this.tokens.nextIs({ value: ':' }) ? this.parseType() : undefined;
-    const expr: DirtyExpression[] = [];
+    const exprs: DirtyExpression[] = [];
     do {
-      expr.push(this.parseExpression());
+      exprs.push(this.parseExpression());
     } while (this.tokens.nextIs({ value: ',' }));
-    const source: DirtyExpression = expr.length === 1 ? expr[0] : { id: 'group', expr };
+    const source: DirtyExpression = exprs.length === 1 ? exprs[0] : { id: 'group', exprs, line: this.tokens.line };
     return { args, name, return: ret, struct, source, line }
   }
 
