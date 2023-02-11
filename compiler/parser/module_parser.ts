@@ -3,6 +3,11 @@ import { TokenList, TokenExpect, Token } from './tokenizer.ts';
 
 export type ParserMeta = { line: number };
 
+export type ParserRoute = {
+  readonly route: string[],
+  readonly meta: ParserMeta
+}
+
 export type Literal = {
   readonly value: string,
   readonly type: 'string' | 'bool' | 'int' | 'float',
@@ -10,7 +15,7 @@ export type Literal = {
 }
 
 export type Type = {
-  readonly base: string[] | Literal | Type[] | 'void',
+  readonly base: ParserRoute | Literal | Type[] | 'void',
   readonly array?: { size?: number },
   readonly meta: ParserMeta
 }
@@ -48,14 +53,14 @@ export type Expression = ({
   readonly else: Expression
 } | {
   readonly id: 'call',
-  readonly func: Expression | string[],
+  readonly func: Expression | ParserRoute,
   readonly args: Expression[]
 } | {
   readonly id: 'literal',
   readonly value: Literal
 } | {
   readonly id: 'value',
-  readonly of: string[]
+  readonly of: ParserRoute
 } | {
   readonly id: 'group',
   readonly exprs: Expression[]
@@ -66,7 +71,7 @@ export type Expression = ({
 } | {
   readonly id: 'get',
   readonly origin: Expression,
-  readonly name: string[]
+  readonly name: ParserRoute
 } | {
   readonly id: 'build',
   readonly args: Expression[]
@@ -134,9 +139,8 @@ export class ModuleParser {
     } else {
       const literal = this.tryParseLiteral();
       if (literal) base = literal;
-      else {
-        base = [] as string[];
-        base.push(...this.parseName(this.tokens.expectNext({ type: 'identifier' }).value));
+      else base = {
+        route: this.parseName(this.tokens.expectNext({ type: 'identifier' }).value), meta: { line }
       }
     }
     const isArray = !!this.tokens.nextIs({ value: '{' });
@@ -188,10 +192,11 @@ export class ModuleParser {
     if (l !== undefined) return { id: 'literal', value: l, meta: { line: this.tokens.line } };
     const id = this.tokens.nextIs({ type: 'identifier' });
     if (id) {
-      const name = this.parseName(id.value);
+      const route = this.parseName(id.value);
       const args = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
-      if (args !== undefined) return { id: 'call', func: name, args: args, meta: { line: this.tokens.line } };
-      return { id: 'value', of: name, meta: { line: this.tokens.line } };
+      const line = this.tokens.line;
+      if (args !== undefined) return { id: 'call', func: { route, meta: { line } }, args: args, meta: { line: this.tokens.line } };
+      return { id: 'value', of: { route, meta: { line } }, meta: { line: this.tokens.line } };
     }
     this.tokens.emitError('Expecting expression');
   }
@@ -200,7 +205,7 @@ export class ModuleParser {
     let expr = this.parseExpressionTerm();
     let callArgs = undefined;
     let indexArgs = undefined;
-    let accessName = undefined;
+    let route = undefined;
     do {
       if ((callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' })) !== undefined)
         expr = { id: 'call', func: expr, args: callArgs, meta: { line: this.tokens.line } };
@@ -208,10 +213,11 @@ export class ModuleParser {
         expr = { id: 'index', origin: expr, args: indexArgs, meta: { line: this.tokens.line } };
       if (this.tokens.nextIs({ value: '.' })) {
         const nm = this.tokens.expectNext({ type: 'identifier' });
-        accessName = this.parseName(nm.value);
-        expr = { id: 'get', origin: expr, name: accessName, meta: { line: this.tokens.line } };
-      } else accessName = undefined;
-    } while (callArgs !== undefined || indexArgs !== undefined || accessName !== undefined);
+        route = this.parseName(nm.value);
+        const line = this.tokens.line;
+        expr = { id: 'get', origin: expr, name: { route, meta: { line } }, meta: { line: this.tokens.line } };
+      } else route = undefined;
+    } while (callArgs !== undefined || indexArgs !== undefined || route !== undefined);
     return expr;
   }
 
@@ -220,7 +226,7 @@ export class ModuleParser {
     let expr: Expression = op
       ? {
         id: 'call',
-        func: [op.value],
+        func: { route: [op.value], meta: { line: this.tokens.line } },
         args: [this.parseExpressionRecursiveTerm()],
         meta: { line: this.tokens.line }
       }
@@ -230,7 +236,7 @@ export class ModuleParser {
     while (opMiddle !== undefined) {
       expr = {
         id: 'call',
-        func: [opMiddle.value],
+        func: { route: [opMiddle.value], meta: { line: this.tokens.line } },
         args: [expr, this.parseExpressionRecursiveTerm()],
         meta: { line: this.tokens.line }
       };
