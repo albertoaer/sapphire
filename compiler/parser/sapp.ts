@@ -15,9 +15,18 @@ export type Expression = {
   readonly else: Expression
 } | {
   readonly id: 'call',
-  readonly func: Expression | Func,
+  readonly func: Func,
   readonly args: Expression[]
 } | {
+  readonly id: 'call_indirect',
+  readonly func: Expression,
+  readonly args: Expression[]
+}| {
+  readonly id: 'call_instanced',
+  readonly func: Func[],
+  readonly owner: Expression,
+  readonly args: Expression[]
+}| {
   readonly id: 'literal',
   readonly value: Literal
 } | {
@@ -60,22 +69,27 @@ export class Type {
 }
 
 export interface Func {
-  getSource(): Expression;
+  inputSignature: Type[], // Parameter types
+  fullInputSignature: Type[], // Struct types + Parameter types
+  outputSignature: Type, // Return type
+  locals: Type[], // Defined locals with their type
+  source: Expression // Body
 }
 
 export interface Def {
   readonly route: ModuleRoute;
   readonly name: string;
+  readonly instanceOverloads: number;
 
-  getFunc(name: string, signature: Type[]): Func;
+  getFunc(name: string, inputSignature: Type[]): Func | undefined;
+  getInstanceFunc(name: string, inputSignature: Type[]): Func[] | undefined;
 }
 
-export type Global = Module | Def
+export type Global = Module | Def | Func | Func[]
 
 export interface Module {
   readonly route: ModuleRoute;
+  readonly defs: Def[];
 
   getDef(name: string): Def;
-  
-  get defs(): Def[];
 }
