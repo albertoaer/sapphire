@@ -1,5 +1,5 @@
 import { assertThrows, assertEquals } from "https://deno.land/std@0.174.0/testing/asserts.ts";
-import { createParserFor } from "./common_test.ts";
+import { createParserFor } from "./test_utils.ts";
 
 Deno.test('must parse', () => {
   const meta = { line: 1 };

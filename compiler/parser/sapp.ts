@@ -1,7 +1,12 @@
 export type ModuleDescriptor = string[] | 'kernel'
 export type ModuleRoute = `file:${string}` | 'kernel' | 'virtual'
 
-export type NativeType = 'string' | 'bool' | 'i32' | 'i64' | 'f32' | 'f64'
+const nativeType = ['string', 'bool', 'i32', 'i64', 'f32', 'f64'] as const;
+export type NativeType = typeof nativeType[number];
+
+export function isNativeType(name: string): name is NativeType {
+  return nativeType.includes(name as NativeType);
+}
 
 export type Literal = {
   type: NativeType,
@@ -50,10 +55,12 @@ export type Expression = {
   readonly id: 'none'
 }
 
+export const ArraySizeAuto = 'auto';
+
 export class Type {
   constructor(
     readonly base: Def | Type[] | NativeType | 'void',
-    readonly array?: number | 'auto'
+    readonly array?: number | typeof ArraySizeAuto
   ) {}
 
   isEquals(tp: Type): boolean {
@@ -69,11 +76,11 @@ export class Type {
 }
 
 export interface Func {
-  inputSignature: Type[], // Parameter types
-  fullInputSignature: Type[], // Struct types + Parameter types
-  outputSignature: Type, // Return type
-  locals: Type[], // Defined locals with their type
-  source: Expression // Body
+  readonly inputSignature: Type[], // Parameter types
+  readonly fullInputSignature: Type[], // Struct types + Parameter types
+  readonly outputSignature: Type, // Return type
+  readonly locals: Type[], // Defined locals with their type
+  readonly source: Expression // Body
 }
 
 export interface Def {
@@ -85,11 +92,9 @@ export interface Def {
   getInstanceFunc(name: string, inputSignature: Type[]): Func[] | undefined;
 }
 
-export type Global = Module | Def | Func | Func[]
+export type Object = Module | Def | Func | Func[]
 
 export interface Module {
   readonly route: ModuleRoute;
-  readonly defs: Def[];
-
-  getDef(name: string): Def;
+  readonly defs: { [name in string]: Def };
 }
