@@ -7,11 +7,15 @@ export class Definition implements sapp.Def {
     public readonly route: sapp.ModuleRoute,
     public readonly instanceOverloads: number,
     // Functions under a name always have different input signature
-    private readonly functions: { [name: string]: sapp.Func[] | undefined },
+    private readonly functions: { [name in string]: sapp.Func[] },
     
     // Functions under a name and index always have different full input signature but same input signature
-    private readonly instanceFunctions: { [name: string]: sapp.Func[][] | undefined }
+    private readonly instanceFunctions: { [name in string]: sapp.Func[][] }
   ) {}
+
+  get funcs(): sapp.Func[] { return Object.values(this.functions).flat() }
+
+  get instanceFuncs(): sapp.Func[][] { return Object.values(this.instanceFunctions).flat(); }
 
   getFunc(name: string, inputSignature: sapp.Type[]): sapp.Func | undefined {
     return this.functions[name]

@@ -26,12 +26,12 @@ export type Expression = {
   readonly id: 'call_indirect',
   readonly func: Expression,
   readonly args: Expression[]
-}| {
+} | {
   readonly id: 'call_instanced',
   readonly func: Func[],
   readonly owner: Expression,
   readonly args: Expression[]
-}| {
+} | {
   readonly id: 'literal',
   readonly value: Literal
 } | {
@@ -87,6 +87,8 @@ export interface Def {
   readonly route: ModuleRoute;
   readonly name: string;
   readonly instanceOverloads: number;
+  readonly funcs: Func[];
+  readonly instanceFuncs: Func[][];
 
   getFunc(name: string, inputSignature: Type[]): Func | undefined;
   getInstanceFunc(name: string, inputSignature: Type[]): Func[] | undefined;
