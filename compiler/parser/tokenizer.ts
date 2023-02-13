@@ -21,7 +21,7 @@ const isIdChar = (c: string) => c.length == 1 && c.match(/[a-z_]/i) != null
 
 const isNumChar = (c: string) => c.length == 1 && c.match(/[0-9]/) != null
 
-const isSpacer = (c: string) => c.length == 1 && '\n\t '.includes(c)
+const isSpacer = (c: string) => c.length == 1 && '\n\t\r '.includes(c)
 
 const isKeyword = (c: string) => (Keywords as readonly string[]).includes(c);
 
