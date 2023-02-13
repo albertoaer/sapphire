@@ -1,52 +1,59 @@
 import { assertThrows } from "https://deno.land/std@0.174.0/testing/asserts.ts";
-import { fastParseGenerate } from "./common_test.ts";
 import { ParserError } from "./common.ts";
+import { getModule } from "./test_utils.ts";
 
-Deno.test('must generate', () => {
+Deno.test('must generate, types targeted', () => {
   const codes = [
-    `def Test
-    struct string
-    struct int
-    [int] f() .;
-    [string] f() .;
-    [int] f(string) .;
-    [string] f(string) .;
+  `def TestA() . end
+  def TestB
+    (TestA) .
   end`,
   `def Test
     struct string;
     [string] f() .;
-    struct int
-    [int] f() .;
+    struct i32
+    [i32] f() .;
   end`,
   `def Test
-    f(int a, int b) a + b;
-    smt(int x) (
+    f(i32 a, i32 b) a + b;
+    smt(i32 x) (
         y = f(x, x),
         smt(x + y)
       )
   end`,
   `def Test
-    f(int a, int b) a + b;
-    smt(int x) if x > 100 then (
+    f(i32 a, i32 b) a + b;
+    smt(i32 x) if x > 100 then (
         y = f(x, x),
         smt(x + y)
       ) else x end
   end`,
-  `def Test(string x) getAFunction()[x] end`,
-  `def Test someFunc(int x, int y)
+  `def Test someFunc(i32 x, i32 y)
     z = x + y,
     z * 2
-  end`
+  end`,
+  `def Test
+    struct string
+    struct i32
+    [i32] f() .;
+    [string] f() .;
+    [i32] f(string) .;
+    [string] f(string) .;
+  end`,
   ];
-  codes.forEach(fastParseGenerate);
+  codes.forEach(getModule);
 });
 
-Deno.test('must not generate', () => {
+Deno.test('must not generate, types targeted', () => {
   const codes = [
-    `def Test
+  `def TestA end
+  def TestB
+    (TestC) .
+  end`,
+  `def Test
     struct 0;
-    [0] f(int) 0;
-    [0] f(int) 1;
+    [0] f(i32) 0;
+    [0] f(i32) 1;
   end`,
   `def Test
     struct string
@@ -54,11 +61,11 @@ Deno.test('must not generate', () => {
   end`,
   `def Test
     struct string
-    struct int
-    [int] f() .;
+    struct i32
+    [i32] f() .;
     [string] f() .;
     [string] f(string) .;
   end`
   ];
-  codes.forEach(code => assertThrows(() => fastParseGenerate(code), ParserError));
+  codes.forEach(code => assertThrows(() => getModule(code), ParserError));
 });
