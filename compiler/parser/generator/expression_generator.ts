@@ -1,77 +1,55 @@
-import { sapp, parser, ResolutionEnv } from './common.ts';
-
-export class Args {
-  constructor(private readonly args: [string | null, sapp.Type][]) {}
-
-  getType(name: string): sapp.Type | undefined {
-    return this.args.find(n => n[0] === name)?.[1];
-  }
-
-  getIndex(name: string): number | undefined {
-    const n = this.args.findIndex(n => n[0] === name);
-    return n < 0 ? undefined : n;
-  }
-}
-
-export class Locals {
-  private constructor(private readonly types: [sapp.Type, boolean][]) {}
-
-  compatibleLocalType = (a: sapp.Type, b: sapp.Type) =>
-    a.isEquals(b); // Can be optimized knowing which type is a pointer
-
-  insert(tp: sapp.Type): number {
-    const n = this.types.findIndex(tpi => tpi[1] && this.compatibleLocalType(tpi[0], tp))
-    if (n < 0) return this.types.push([tp, true]) - 1;
-    return n;
-  }
-
-  collect = () => this.types.map(x => x[0]);
-
-  static create(): Locals {
-    return new Locals([]);
-  }
-}
+import {
+  sapp, parser, FunctionResolutionEnv, ParserError, FeatureError, MatchTypeError, basicInferLiteral
+} from './common.ts';
 
 export class ExpressionGenerator {
   private processed: [sapp.Expression, sapp.Type] | null = null;
 
   constructor(
-    private readonly env: ResolutionEnv,
-    private readonly args: Args,
-    public readonly locals: Locals,
+    private readonly env: FunctionResolutionEnv,
     private readonly expression: parser.Expression
   ) {}
 
   private processCall(ex: parser.Expression & { id: 'call' }): [sapp.Expression, sapp.Type] {
-    throw new Error('todo')
+    if (!('route' in ex.func)) throw new FeatureError(ex.meta.line, 'Call expression result');
+    const callArgs = ex.args.map(x => this.processEx(x));
+    const args = callArgs.map(x => x[0]);
+    const func = this.env.fetchFunc(ex.func, callArgs.map(x => x[1]));
+    return 'owner' in func
+      ? [{ id: 'call_instanced', args, func: func.funcGroup, owner: func.owner }, func.funcGroup[0].outputSignature]
+      : [{ id: 'call', args, func }, func.outputSignature];
   }
   
-  private processGet(ex: parser.Expression & { id: 'get' }): [sapp.Expression, sapp.Type] {
-    throw new Error('todo')
-  }
-  
-  private processGroup(ex: parser.Expression & { id: 'group' }): [sapp.Expression, sapp.Type] {
-    throw new Error('todo')
+  private processGroup({ exprs, meta }: parser.Expression & { id: 'group' }): [sapp.Expression, sapp.Type] {
+    if (exprs.length === 0) throw new ParserError(meta.line, 'Empty group');
+    const group = exprs.map(x => this.processEx(x));
+    return [{ id: 'group', exprs: group.map(x => x[0]) }, group.at(-1)?.[1] as sapp.Type];
   }
 
   private processIf(ex: parser.Expression & { id: 'if' }): [sapp.Expression, sapp.Type] {
-    throw new Error('todo')
+    const [cond_, boolExp] = this.processEx(ex.cond);
+    if (boolExp.base !== 'bool') throw new MatchTypeError(ex.meta.line, boolExp, new sapp.Type('bool'));
+    const [else_, branchA] = this.processEx(ex.else);
+    const [then_, branchB] = this.processEx(ex.then);
+    if (!branchA.isEquals(branchB)) throw new MatchTypeError(ex.meta.line, branchA, branchB);
+    return [{ id: 'if', cond: cond_, else: else_, then: then_ }, branchA];
   }
   
   private processIndex(ex: parser.Expression & { id: 'index' }): [sapp.Expression, sapp.Type] {
-    throw new Error('todo')
+    throw new FeatureError(ex.meta.line, 'Indexation');
   }
   
-  private processLiteral({ id, value }: parser.Expression & { id: 'literal' }): [sapp.Expression, sapp.Type] {
-    throw new Error('todo')
+  private processLiteral({ value }: parser.Expression & { id: 'literal' }): [sapp.Expression, sapp.Type] {
+    const literal: sapp.Literal = basicInferLiteral(value);
+    return [{ id: 'literal', value: literal }, new sapp.Type(literal.type)];
   }
 
-  private processValue(ex: parser.Expression & { id: 'value' }): [sapp.Expression, sapp.Type] {
-    throw new Error('todo')
+  private processValue({ name }: parser.Expression & { id: 'value' }): [sapp.Expression, sapp.Type] {
+    return this.env.getValue(name);
   }
 
-  private processBuild({ id, args }: parser.Expression & { id: 'build' }): [sapp.Expression, sapp.Type] {
-    throw new Error('todo')
+  private processBuild({ meta }: parser.Expression & { id: 'build' }): [sapp.Expression, sapp.Type] {
+    throw new FeatureError(meta.line, 'Build structure');
   }
 
   private processNone(_: parser.Expression & { id: 'none' }): [sapp.Expression, sapp.Type] {
@@ -81,7 +59,7 @@ export class ExpressionGenerator {
   private processEx(ex: parser.Expression): [sapp.Expression, sapp.Type] {
     switch (ex.id) {
       case 'call': return this.processCall(ex);
-      case 'get': return this.processGet(ex);
+      case 'get': throw new FeatureError(ex.meta.line, 'Get property');
       case 'group': return this.processGroup(ex);
       case 'if': return this.processIf(ex);
       case 'index': return this.processIndex(ex);

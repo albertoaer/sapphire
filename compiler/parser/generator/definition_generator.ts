@@ -1,4 +1,4 @@
-import { sapp, parser, ResolutionEnv, ParserError } from './common.ts';
+import { sapp, parser, ResolutionEnv, ParserError, FetchedInstanceFunc } from './common.ts';
 import { FunctionGenerator } from './function_generator.ts';
 
 export class Definition implements sapp.Def {
@@ -78,8 +78,8 @@ export class DefinitionGenerator implements ResolutionEnv {
     return this.env.resolveType(raw);
   }
 
-  getObject(route: parser.ParserRoute): sapp.Object {
-    return this.env.getObject(route);
+  fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
+    return this.env.fetchFunc(route, inputSignature);
   }
 
   private generateStruct(pre: parser.Struct) {

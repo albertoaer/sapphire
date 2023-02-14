@@ -1,7 +1,7 @@
 import { ParserError } from "./common.ts";
 import { TokenList, TokenExpect, Token } from './tokenizer.ts';
 
-export type ParserMeta = { line: number };
+export type ParserMeta = { line: number }
 
 export type ParserRoute = {
   readonly route: string[],
@@ -60,7 +60,7 @@ export type Expression = ({
   readonly value: Literal
 } | {
   readonly id: 'value',
-  readonly of: ParserRoute
+  readonly name: ParserRoute
 } | {
   readonly id: 'group',
   readonly exprs: Expression[]
@@ -196,7 +196,7 @@ export class ModuleParser {
       const args = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
       const line = this.tokens.line;
       if (args !== undefined) return { id: 'call', func: { route, meta: { line } }, args: args, meta: { line: this.tokens.line } };
-      return { id: 'value', of: { route, meta: { line } }, meta: { line: this.tokens.line } };
+      return { id: 'value', name: { route, meta: { line } }, meta: { line: this.tokens.line } };
     }
     this.tokens.emitError('Expecting expression');
   }

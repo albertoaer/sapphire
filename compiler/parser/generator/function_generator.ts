@@ -1,5 +1,37 @@
-import { parser, sapp, ResolutionEnv, ParserError } from './common.ts';
-import { Args, Locals, ExpressionGenerator } from './expression_generator.ts';
+import { parser, sapp, ResolutionEnv, FunctionResolutionEnv, ParserError, FetchedInstanceFunc } from './common.ts';
+import { ExpressionGenerator } from './expression_generator.ts';
+
+export class Args {
+  constructor(private readonly args: [string | null, sapp.Type][]) {}
+
+  getType(name: string): sapp.Type | undefined {
+    return this.args.find(n => n[0] === name)?.[1];
+  }
+
+  getIndex(name: string): number | undefined {
+    const n = this.args.findIndex(n => n[0] === name);
+    return n < 0 ? undefined : n;
+  }
+}
+
+export class Locals {
+  private constructor(private readonly types: [sapp.Type, boolean][]) {}
+
+  compatibleLocalType = (a: sapp.Type, b: sapp.Type) =>
+    a.isEquals(b); // Can be optimized knowing which type is a pointer
+
+  insert(tp: sapp.Type): number {
+    const n = this.types.findIndex(tpi => tpi[1] && this.compatibleLocalType(tpi[0], tp))
+    if (n < 0) return this.types.push([tp, true]) - 1;
+    return n;
+  }
+
+  collect = () => this.types.map(x => x[0]);
+
+  static create(): Locals {
+    return new Locals([]);
+  }
+}
 
 class Function implements sapp.Func {
   private _source: sapp.Expression | undefined = undefined;
@@ -36,32 +68,46 @@ class Function implements sapp.Func {
   }
 }
 
-export class FunctionGenerator {
+export class FunctionGenerator implements FunctionResolutionEnv {
   public readonly inputs: sapp.Type[];
   public readonly fullInputs: sapp.Type[];
   private readonly _expr: ExpressionGenerator;
   private readonly _func: Function;
+  private readonly _args: Args;
+  private readonly _locals: Locals = Locals.create();
   private _processed: boolean;
 
   constructor(
     func: parser.Func,
-    env: ResolutionEnv,
+    private readonly env: ResolutionEnv,
     output?: sapp.Type,
     struct?: sapp.Type[]
   ) {
     const args = func.inputs.map(x => [x.name, env.resolveType(x.type)] as [string, sapp.Type]);
     this.inputs = args.map(x => x[1]);
     this.fullInputs = struct ? [...struct, ...this.inputs] : this.inputs;
-    this._expr = new ExpressionGenerator(env, new Args(args), Locals.create(), func.source);
+    this._args = new Args(args);
+    this._expr = new ExpressionGenerator(this, func.source);
     this._func = new Function(this.inputs, this.fullInputs, func.meta, output);
     this._processed = false;
+  }
+
+  getValue(name: parser.ParserRoute): [sapp.Expression & { name: number; }, sapp.Type] {
+    throw new Error('todo')
+  }
+  
+  resolveType(raw: parser.Type): sapp.Type {
+    return this.env.resolveType(raw);
+  }
+
+  fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
+    return this.env.fetchFunc(route, inputSignature);
   }
 
   generate() {
     if (!this._processed) {
       const [source, output] = this._expr.process();
-      const locals = this._expr.locals.collect();
-      this._func.complete(source, locals, output);
+      this._func.complete(source, this._locals.collect(), output);
       this._processed = true;
     }
   }
