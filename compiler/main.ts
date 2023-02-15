@@ -1,5 +1,6 @@
 import flags from './cli.ts';
-import { Compiler, WasmCompiler } from './compiler.ts';
+import { Compiler } from './compiler.ts';
+import { WasmCompiler } from './sapp_wasm/compiler.ts';
 import { IOParserSupport } from './parser/parser.ts';
 import { DefaultIOParserSupport } from './io.ts';
 
