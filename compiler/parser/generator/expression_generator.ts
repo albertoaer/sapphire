@@ -22,7 +22,7 @@ export class ExpressionGenerator {
   
   private processGroup({ exprs, meta }: parser.Expression & { id: 'group' }): [sapp.Expression, sapp.Type] {
     if (exprs.length === 0) throw new ParserError(meta.line, 'Empty group');
-    const group = exprs.map(x => this.processEx(x));
+    const group = this.env.scoped(() => exprs.map(x => this.processEx(x)));
     return [{ id: 'group', exprs: group.map(x => x[0]) }, group.at(-1)?.[1] as sapp.Type];
   }
 

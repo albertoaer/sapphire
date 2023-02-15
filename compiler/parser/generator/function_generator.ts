@@ -1,35 +1,51 @@
 import { parser, sapp, ResolutionEnv, FunctionResolutionEnv, ParserError, FetchedInstanceFunc } from './common.ts';
 import { ExpressionGenerator } from './expression_generator.ts';
 
-export class Args {
-  constructor(private readonly args: [string | null, sapp.Type][]) {}
+export class Parameters {
+  constructor(private readonly params: [string | null, sapp.Type][]) { }
 
-  getType(name: string): sapp.Type | undefined {
-    return this.args.find(n => n[0] === name)?.[1];
-  }
-
-  getIndex(name: string): number | undefined {
-    const n = this.args.findIndex(n => n[0] === name);
-    return n < 0 ? undefined : n;
+  get(name: string): [number, sapp.Type] | undefined {
+    const i = this.params.findIndex(n => n[0] === name);
+    if (i !== undefined) return [i, this.params[i][1]];
   }
 }
 
 export class Locals {
-  private constructor(private readonly types: [sapp.Type, boolean][]) {}
+  private locals: [string | null, sapp.Type][] = [];
+  private readonly localStack: Locals['locals'][] = [];
+  
+  constructor() { }
+
+  open() {
+    this.localStack.push(this.locals);
+    this.locals = this.locals.map(x => [...x]);
+  }
+
+  close() {
+    const top = this.localStack.pop();
+    if (!top) throw new Error('Trying to use undefined as locals');
+    for (let i = top.length; i < this.locals.length; i++)
+      top.push([null, this.locals[i][1]]);
+    this.locals = top;
+  }
 
   compatibleLocalType = (a: sapp.Type, b: sapp.Type) =>
     a.isEquals(b); // Can be optimized knowing which type is a pointer
 
-  insert(tp: sapp.Type): number {
-    const n = this.types.findIndex(tpi => tpi[1] && this.compatibleLocalType(tpi[0], tp))
-    if (n < 0) return this.types.push([tp, true]) - 1;
-    return n;
+  insert(name: string, tp: sapp.Type): number {
+    for (let i = this.locals.length - 1; i >= 0; i--)
+      if (this.locals[i][0] === null && this.compatibleLocalType(this.locals[i][1], tp)) {
+        this.locals[i][0] = name;
+        return i;
+      }
+    return this.locals.push([name, tp]) - 1;
   }
 
-  collect = () => this.types.map(x => x[0]);
+  collect = (): sapp.Type[] => this.locals.map(x => x[1]);
 
-  static create(): Locals {
-    return new Locals([]);
+  get(name: string): [number, sapp.Type] | undefined {
+    const i = this.locals.findIndex(n => n[0] === name);
+    if (i !== undefined) return [i, this.locals[i][1]];
   }
 }
 
@@ -73,8 +89,8 @@ export class FunctionGenerator implements FunctionResolutionEnv {
   public readonly fullInputs: sapp.Type[];
   private readonly _expr: ExpressionGenerator;
   private readonly _func: Function;
-  private readonly _args: Args;
-  private readonly _locals: Locals = Locals.create();
+  private readonly _prms: Parameters;
+  private readonly _lcls: Locals = new Locals();
   private _processed: boolean;
 
   constructor(
@@ -86,14 +102,31 @@ export class FunctionGenerator implements FunctionResolutionEnv {
     const args = func.inputs.map(x => [x.name, env.resolveType(x.type)] as [string, sapp.Type]);
     this.inputs = args.map(x => x[1]);
     this.fullInputs = struct ? [...struct, ...this.inputs] : this.inputs;
-    this._args = new Args(args);
+    this._prms = new Parameters(args);
     this._expr = new ExpressionGenerator(this, func.source);
     this._func = new Function(this.inputs, this.fullInputs, func.meta, output);
     this._processed = false;
   }
+  
+  scoped<T>(action: () => T): T {
+    this._lcls.open();
+    const result = action();
+    this._lcls.close();
+    return result;
+  }
 
   getValue(name: parser.ParserRoute): [sapp.Expression & { name: number; }, sapp.Type] {
-    throw new Error('todo')
+    const param = this._prms.get(name.route[0]);
+    if (param) {
+      if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property ${name.route[1]}`);
+      return [{ id: 'param_get', name: param[0] }, param[1]];
+    }
+    const local = this._lcls.get(name.route[0]);
+    if (local) {
+      if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property ${name.route[1]}`);
+      return [{ id: 'local_get', name: local[0] }, local[1]];
+    }
+    throw new ParserError(name.meta.line, `Symbol not found: ${name.route[0]}`);
   }
   
   resolveType(raw: parser.Type): sapp.Type {
@@ -107,7 +140,7 @@ export class FunctionGenerator implements FunctionResolutionEnv {
   generate() {
     if (!this._processed) {
       const [source, output] = this._expr.process();
-      this._func.complete(source, this._locals.collect(), output);
+      this._func.complete(source, this._lcls.collect(), output);
       this._processed = true;
     }
   }

@@ -68,11 +68,11 @@ export class ModuleGenerator implements ResolutionEnv {
   }
 
   get module(): sapp.Module {
-    if (this.processed === undefined) {      
-      const defs = Object.fromEntries(Object.entries(this.defs).map(([n, d]) => [n, d.generate()]));
-
-      this.processed = { route: this.route, defs }
-    }
+    if (this.processed === undefined)
+      this.processed = {
+        route: this.route,
+        defs: Object.fromEntries(Object.entries(this.defs).map(([n, d]) => [n, d.generate()]))
+      };
     return this.processed;
   }
 }

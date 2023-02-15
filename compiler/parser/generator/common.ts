@@ -23,6 +23,8 @@ export interface ResolutionEnv {
 
 export interface FunctionResolutionEnv extends ResolutionEnv {
   getValue(name: parser.ParserRoute): [sapp.Expression & { name: number }, sapp.Type];
+
+  scoped<T>(action: () => T): T;
 }
 
 /**
