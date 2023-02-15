@@ -26,12 +26,12 @@ export type Expression = {
   readonly id: 'call_indirect',
   readonly func: Expression,
   readonly args: Expression[]
-}| {
+} | {
   readonly id: 'call_instanced',
   readonly func: Func[],
   readonly owner: Expression,
   readonly args: Expression[]
-}| {
+} | {
   readonly id: 'literal',
   readonly value: Literal
 } | {
@@ -60,10 +60,11 @@ export const ArraySizeAuto = 'auto';
 export class Type {
   constructor(
     readonly base: Def | Type[] | NativeType | 'void',
-    readonly array?: number | typeof ArraySizeAuto
+    readonly attrs?: { literal?: string, array?: number | typeof ArraySizeAuto }
   ) {}
 
   isEquals(tp: Type): boolean {
+    if (this.attrs?.array !== tp.attrs?.array || this.attrs?.literal !== tp.attrs?.literal) return false;
     if (typeof this.base === 'string' || typeof tp.base === 'string') return this.base === tp.base;
     if ('route' in this.base) {
       if (!('route' in tp.base)) return false;
@@ -72,6 +73,13 @@ export class Type {
     if ('route' in tp.base) return false;
     const base: Type[] = tp.base;
     return this.base.every((x, i) => x.isEquals(base[i]));
+  }
+
+  toString(): string {
+    const arr = this.attrs?.array !== undefined ? `{${this.attrs.array.toString().replace(ArraySizeAuto, '')}}` : '';
+    if (typeof this.base === 'string') return this.base + arr;
+    if (Array.isArray(this.base)) return `[${this.base.map(x => x.toString()).join(',')}]` + arr;
+    return this.base.name + arr;
   }
 }
 
@@ -87,12 +95,14 @@ export interface Def {
   readonly route: ModuleRoute;
   readonly name: string;
   readonly instanceOverloads: number;
+  readonly funcs: Func[];
+  readonly instanceFuncs: Func[][];
 
   getFunc(name: string, inputSignature: Type[]): Func | undefined;
   getInstanceFunc(name: string, inputSignature: Type[]): Func[] | undefined;
 }
 
-export type Object = Module | Def | Func | Func[]
+export type GlobalObject = Module | Def
 
 export interface Module {
   readonly route: ModuleRoute;

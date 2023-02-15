@@ -38,7 +38,7 @@ Deno.test('must parse', () => {
       {
         id: 'call', func: { route: ['a', 'b'], meta }, meta,
         args: [
-          { id: 'value', of: { route: ['f', 'g'], meta }, meta},
+          { id: 'value', name: { route: ['f', 'g'], meta }, meta},
           { id: 'literal', meta, value: { type: 'int', value: '3', meta } }
         ]
       },
@@ -64,18 +64,18 @@ Deno.test('must parse', () => {
   ], meta });
   assertEquals(createParserFor('if a then b else if c then d else e end').parseExpression(), {
     id: 'if', meta,
-    cond: { id: 'value', of: { route: ['a'], meta }, meta },
-    then: { id: 'value', of: { route: ['b'], meta }, meta },
+    cond: { id: 'value', name: { route: ['a'], meta }, meta },
+    then: { id: 'value', name: { route: ['b'], meta }, meta },
     else: {
       id: 'if', meta,
-      cond: { id: 'value', of: { route: ['c'], meta }, meta },
-      then: { id: 'value', of: { route: ['d'], meta }, meta },
-      else: { id: 'value', of: { route: ['e'], meta }, meta }
+      cond: { id: 'value', name: { route: ['c'], meta }, meta },
+      then: { id: 'value', name: { route: ['d'], meta }, meta },
+      else: { id: 'value', name: { route: ['e'], meta }, meta }
     }
   });
   assertEquals(createParserFor('a.c[b.c(),2,"hello"].x.y').parseExpression(), {
     id: 'get', name: { route: ['x', 'y'], meta }, meta, origin: {
-      id: 'index', meta, origin: { id: 'value', of: { route: ['a', 'c'], meta }, meta }, args: [
+      id: 'index', meta, origin: { id: 'value', name: { route: ['a', 'c'], meta }, meta }, args: [
         { id: 'call', func: { route: ['b', 'c'], meta }, args: [], meta },
         { id: 'literal', value: { value: '2', type: 'int', meta }, meta },
         { id: 'literal', value: { value: 'hello', type: 'string', meta }, meta }

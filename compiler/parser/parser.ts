@@ -21,13 +21,13 @@ export class Parser {
 
   constructor(private readonly io: IOParserSupport) {}
 
-  private preventRepeatedName(globals: Map<string, sapp.Object>, name: string) {
+  private preventRepeatedName(globals: Map<string, sapp.GlobalObject>, name: string) {
     if (globals.has(name))
       throw new DependencyError(`Global ${name} declared twice`);
   }
 
-  private makeGlobals(dependencies: Import[]): Map<string, sapp.Object> {
-    const globals: Map<string, sapp.Object> = new Map();
+  private makeGlobals(dependencies: Import[]): Map<string, sapp.GlobalObject> {
+    const globals: Map<string, sapp.GlobalObject> = new Map();
     for (const imp of dependencies) {
       const module = this.parseModule(imp.route);
       if (imp.mode === 'into') {
