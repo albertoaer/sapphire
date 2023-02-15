@@ -15,9 +15,10 @@ class DependencyError extends Error {
 }
 
 export class Parser {
-  moduleRelations: number[][] = [];
-  inProgressModules: Set<sapp.ModuleRoute> = new Set();
-  storedModules: Map<sapp.ModuleRoute, sapp.Module> = new Map();
+  private readonly inProgressModules: Set<sapp.ModuleRoute> = new Set();
+  private readonly storedModules: Map<sapp.ModuleRoute, sapp.Module> = new Map();
+  private readonly injectedDescriptors: [string[], sapp.ModuleRoute][] = [];
+  private kernel: sapp.Module | undefined;
 
   constructor(private readonly io: IOParserSupport) {}
 
@@ -28,6 +29,7 @@ export class Parser {
 
   private makeGlobals(dependencies: Import[]): Map<string, sapp.GlobalObject> {
     const globals: Map<string, sapp.GlobalObject> = new Map();
+    if (this.kernel) Object.entries(this.kernel.defs).forEach(([k,v]) => globals.set(k, v));
     for (const imp of dependencies) {
       const module = this.parseModule(imp.route);
       if (imp.mode === 'into') {
@@ -43,7 +45,33 @@ export class Parser {
     return globals;
   }
 
-  parseModule = (descriptor: sapp.ModuleDescriptor): sapp.Module => {
+  private tryGetInjected = (descriptor: string[]): sapp.ModuleRoute | undefined =>
+    this.injectedDescriptors.find(x => x[0].every((x, i) => x === descriptor[i]))?.[1];
+
+  injectModule(descriptor: string[], name: string, module: sapp.Module) {
+    const route: sapp.ModuleRoute = `virtual:${name}`;
+    if (this.storedModules.has(route))
+      throw new DependencyError('Trying to inject twice with the same name');
+    if (this.tryGetInjected(descriptor) !== undefined)
+      throw new DependencyError('Trying to inject twice with the same descriptor');
+    this.storedModules.set(route, module);
+    this.injectedDescriptors.push([descriptor, route]);
+  }
+
+  provideKernel(mod: sapp.Module): void {
+    this.kernel = mod
+  }
+
+  // TODO: Split into multiple functions to reduce testing complexity
+  parseModule(descriptor: sapp.ModuleDescriptor): sapp.Module {
+    if (Array.isArray(descriptor)) {
+      const vroute = this.tryGetInjected(descriptor);
+      if (vroute) {
+        const mod = this.storedModules.get(vroute);
+        if (mod === undefined) throw new DependencyError(`Declared virtual module is not stored: ${vroute}`);
+        return mod;
+      }
+    }
     const route = this.io.solveModuleRoute(descriptor);
     if (this.inProgressModules.has(route)) throw new DependencyError(`Circular dependency trying to import ${route}`);
     if (!this.storedModules.has(route)) {

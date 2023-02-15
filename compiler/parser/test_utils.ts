@@ -12,6 +12,6 @@ export function fastParse(code: string): ModuleParser {
 }
 
 export function getModule(code: string): sapp.Module {
-  const gen = new ModuleGenerator(new Map(), 'virtual', fastParse(code).definitions);
+  const gen = new ModuleGenerator(new Map(), 'virtual:main', fastParse(code).definitions);
   return gen.module;
 }
