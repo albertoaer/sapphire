@@ -83,12 +83,20 @@ export class Type {
   }
 }
 
+export type NativeReference = {
+  resolution: 'find',
+  id: string
+} | {
+  resolution: 'apply',
+  action: () => void
+}
+
 export interface Func {
   readonly inputSignature: Type[], // Parameter types
   readonly fullInputSignature: Type[], // Struct types + Parameter types
   readonly outputSignature: Type, // Return type
   readonly locals: Type[], // Defined locals with their type
-  readonly source: Expression // Body
+  readonly source: Expression | NativeReference // Body
 }
 
 export interface Def {
