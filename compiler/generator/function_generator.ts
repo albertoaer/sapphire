@@ -116,18 +116,27 @@ export class FunctionGenerator implements FunctionResolutionEnv {
     return result;
   }
 
+  private getNoThrow(name: string): [sapp.Expression & { name: number; }, sapp.Type] | undefined {
+    const local = this._lcls.get(name);
+    if (local) return [{ id: 'local_get', name: local[0] }, local[1]];
+    const param = this._prms.get(name);
+    if (param) return [{ id: 'param_get', name: param[0] }, param[1]];
+  }
+
   getValue(name: parser.ParserRoute): [sapp.Expression & { name: number; }, sapp.Type] {
-    const param = this._prms.get(name.route[0]);
-    if (param) {
+    if (name.route[0] === undefined) throw new ParserError(name.meta.line, 'Empty route');
+    const v = this.getNoThrow(name.route[0]);
+    if (v) {
       if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property ${name.route[1]}`);
-      return [{ id: 'param_get', name: param[0] }, param[1]];
-    }
-    const local = this._lcls.get(name.route[0]);
-    if (local) {
-      if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property ${name.route[1]}`);
-      return [{ id: 'local_get', name: local[0] }, local[1]];
+      return v;
     }
     throw new ParserError(name.meta.line, `Symbol not found: ${name.route[0]}`);
+  }
+
+  setValue(name: parser.ParserRoute, tp: sapp.Type): number {
+    if (this.getNoThrow(name.route[0])) throw new ParserError(name.meta.line, `Already exists ${name.route[0]}`);
+    if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property ${name.route[1]}`);
+    return this._lcls.insert(name.route[0], tp);
   }
   
   resolveType(raw: parser.Type): sapp.Type {

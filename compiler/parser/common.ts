@@ -66,6 +66,10 @@ export type Expression = ({
   readonly origin: Expression,
   readonly args: Expression[]
 } | {
+  readonly id: 'assign',
+  readonly name: ParserRoute,
+  readonly value: Expression
+} | {
   readonly id: 'get',
   readonly origin: Expression,
   readonly name: ParserRoute

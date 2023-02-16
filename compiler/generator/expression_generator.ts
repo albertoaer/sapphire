@@ -1,5 +1,6 @@
 import { sapp, parser, FunctionResolutionEnv, basicInferLiteral } from './common.ts';
 import { ParserError, FeatureError, MatchTypeError } from "../errors.ts";
+import { Type } from '../sapp.ts';
 
 export class ExpressionGenerator {
   private processed: [sapp.Expression, sapp.Type] | null = null;
@@ -8,6 +9,12 @@ export class ExpressionGenerator {
     private readonly env: FunctionResolutionEnv,
     private readonly expression: parser.Expression
   ) {}
+
+  private processAssign(ex: parser.Expression & { id: 'assign' }): [sapp.Expression, sapp.Type] {
+    const val = this.processEx(ex.value);
+    const name = this.env.setValue(ex.name, val[1]);
+    return [{ id: 'local_set', name, value: val[0] }, new Type('void')];
+  }
 
   private processCall(ex: parser.Expression & { id: 'call' }): [sapp.Expression, sapp.Type] {
     if (!('route' in ex.func)) throw new FeatureError(ex.meta.line, 'Call expression result');
@@ -57,6 +64,7 @@ export class ExpressionGenerator {
 
   private processEx(ex: parser.Expression): [sapp.Expression, sapp.Type] {
     switch (ex.id) {
+      case 'assign': return this.processAssign(ex);
       case 'call': return this.processCall(ex);
       case 'get': throw new FeatureError(ex.meta.line, 'Get property');
       case 'group': return this.processGroup(ex);
