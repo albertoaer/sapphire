@@ -1,5 +1,5 @@
-export type ModuleDescriptor = string[] | 'kernel'
-export type ModuleRoute = `file:${string}` | 'kernel' | `virtual:${string}`
+export type ModuleDescriptor = string[]
+export type ModuleRoute = `${'kernel' | 'virtual' | 'file' | 'web'}:${string}`
 
 const nativeType = ['string', 'bool', 'i32', 'i64', 'f32', 'f64'] as const;
 export type NativeType = typeof nativeType[number];

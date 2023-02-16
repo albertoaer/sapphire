@@ -1,4 +1,4 @@
-import { ParserError } from './common.ts';
+import { ParserError } from '../errors.ts';
 
 export type Token = {
   line: number,

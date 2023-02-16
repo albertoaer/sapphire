@@ -1,6 +1,34 @@
 import { assertThrows } from "https://deno.land/std@0.174.0/testing/asserts.ts";
-import { ParserError } from "./common.ts";
-import { getModule } from "./test_utils.ts";
+import { ParserError } from "../errors.ts";
+import { Module, Func, Type } from "../sapp.ts";
+import { Generator } from './generator.ts'
+
+const generator = new Generator();
+
+const sum: Func = {
+  fullInputSignature: [new Type('i32'), new Type('i32')],
+  inputSignature: [new Type('i32'), new Type('i32')],
+  locals: [],
+  outputSignature: new Type('i32'),
+  source: { resolution: 'find', id: 'i32sum' }
+}
+
+generator.overwriteKernel({
+  route: 'kernel:test',
+  defs: {
+    '+': {
+      name: '+',
+      route: 'kernel:test',
+      instanceOverloads: 0,
+      funcs: [sum],
+      getFunc: (_a, _b) => sum,
+      instanceFuncs: [],
+      getInstanceFunc: (_a, _b) => undefined
+    }
+  }
+})
+
+const genTest = (src: string): Module => generator.generateModule('virtual:test', src);
 
 Deno.test('must generate, types targeted', () => {
   const codes = [
@@ -41,7 +69,7 @@ Deno.test('must generate, types targeted', () => {
     [string] f(string) .;
   end`,
   ];
-  codes.forEach(getModule);
+  codes.forEach(genTest);
 });
 
 Deno.test('must not generate, types targeted', () => {
@@ -67,5 +95,5 @@ Deno.test('must not generate, types targeted', () => {
     [string] f(string) .;
   end`
   ];
-  codes.forEach(code => assertThrows(() => getModule(code), ParserError));
+  codes.forEach(code => assertThrows(() => genTest(code), ParserError));
 });
