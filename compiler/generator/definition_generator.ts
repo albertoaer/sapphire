@@ -1,5 +1,6 @@
-import { sapp, parser, ResolutionEnv, ParserError, FetchedInstanceFunc } from './common.ts';
+import { sapp, parser, ResolutionEnv, FetchedInstanceFunc } from './common.ts';
 import { FunctionGenerator } from './function_generator.ts';
+import { ParserError } from '../errors.ts';
 
 export class Definition implements sapp.Def {
   constructor(
@@ -53,10 +54,14 @@ class InstanceFunction {
     this.functionsByStruct[structIdx] = func;
   }
 
-  get functions(): FunctionGenerator[] {
+  get functions(): sapp.Func[] {
     if (this.functionsByStruct.findIndex(x => x === undefined) >= 0)
       throw new ParserError(this.refLine, 'Signature not covered by every struct');
-    return this.functionsByStruct as FunctionGenerator[];
+    const funcs = this.functionsByStruct.map(x => x!.func);
+    for (let i = 1; i < funcs.length; i++)
+      if (!funcs[i-1].outputSignature.isEquals(funcs[i].outputSignature))
+        throw new ParserError(this.refLine, 'Return type must be the same between instance functions');
+    return funcs;
   }
 }
 
@@ -131,7 +136,7 @@ export class DefinitionGenerator implements ResolutionEnv {
       ([n, f]) => [n, f.map(f => f.func)]
     ));
     const instanceFunctions = Object.fromEntries(Object.entries(this.instanceFunctions).map(
-      ([n, f]) => [n, f.map(f => f.functions.map(f => f.func))]
+      ([n, f]) => [n, f.map(f => f.functions)]
     ));
     return new Definition(this.def.name, this.route, this.structs.length, functions, instanceFunctions);
   }

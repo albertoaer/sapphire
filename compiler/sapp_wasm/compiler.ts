@@ -1,4 +1,5 @@
 import { sapp, wasm, parser, convertToWasmType } from './common.ts';
+import { Generator, GeneratorIO } from '../generator/generator.ts';
 import type { Compiler } from '../compiler.ts';
 
 class WasmContext {
@@ -47,14 +48,14 @@ class WasmFunctionProcessor {
 }
 
 export class WasmCompiler implements Compiler {
-  private readonly parser: parser.Parser;
+  private readonly generator: Generator;
 
-  constructor(io: parser.IOParserSupport) {
-    this.parser = new parser.Parser(io);
+  constructor(io: GeneratorIO) {
+    this.generator = new Generator(io);
   }
 
   compile(file: string): Uint8Array {
-    const parsed = this.parser.parseModule([file]);
+    const parsed = this.generator.parseModule([file]);
     const module = new wasm.WasmModule();
     const ctx = new WasmContext(module);
     for (const def of Object.values(parsed.defs))

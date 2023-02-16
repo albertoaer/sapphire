@@ -1,6 +1,5 @@
-import {
-  sapp, parser, FunctionResolutionEnv, ParserError, FeatureError, MatchTypeError, basicInferLiteral
-} from './common.ts';
+import { sapp, parser, FunctionResolutionEnv, basicInferLiteral } from './common.ts';
+import { ParserError, FeatureError, MatchTypeError } from "../errors.ts";
 
 export class ExpressionGenerator {
   private processed: [sapp.Expression, sapp.Type] | null = null;

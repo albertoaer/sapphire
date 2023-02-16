@@ -1,4 +1,4 @@
-import { CompilerError } from './common.ts';
+import { CompilerError } from '../errors.ts';
 import { WasmType } from './module.ts';
 
 export class WasmExpression {
@@ -6,7 +6,7 @@ export class WasmExpression {
 
   private ensureBytes(bytes: number[]): number[] {
     if (!bytes.every(x => Number.isInteger(x) && x >= 0 && x <= 255))
-      throw new CompilerError('Trying to insert non byte array');
+      throw new CompilerError('Wasm', 'Trying to insert non byte array');
     return bytes;
   }
 

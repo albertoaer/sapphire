@@ -1,4 +1,4 @@
-import { CompilerError } from './common.ts';
+import { CompilerError } from '../errors.ts';
 import * as encoding from "./encoding.ts";
 
 export const magicModuleHeader = [0x00, 0x61, 0x73, 0x6d];
@@ -102,7 +102,7 @@ export class WasmModule {
     const functions = this.functions.map(x => 'code' in x ? x : null).filter(x => x !== null);
     if (!functions.length) return [];
     return section(WasmSection.Code, encoding.encodeVector(functions.map(x => {
-      if (x!.code === null) throw new CompilerError('Undefined function code');
+      if (x!.code === null) throw new CompilerError('Wasm', 'Undefined function code');
       return encoding.encodeVector([...encoding.encodeVector([]), ...x!.code, 0x0b]);
     })));
   }
@@ -131,7 +131,7 @@ export class WasmModule {
     if (options) {
       if (options.main) {
         if (this.mainFunction === undefined) this.mainFunction = id;
-        else throw new CompilerError('There is already a main function');
+        else throw new CompilerError('Wasm', 'There is already a main function');
       }
       if (options.export) this.exportedFunctions.push({ id, name: options.export });
     }
@@ -139,10 +139,11 @@ export class WasmModule {
   }
 
   setCode(id: number, code: number[] | Uint8Array) {
-    if (id < 0 || id >= this.functions.length) throw new CompilerError('Trying to set code to an invalid function');
+    if (id < 0 || id >= this.functions.length)
+      throw new CompilerError('Wasm', 'Trying to set code to an invalid function');
     const obj = this.functions[id];
-    if (!('code' in obj)) throw new CompilerError('Can not set code to non module function');
-    if (obj.code !== null) throw new CompilerError('Trying to set code twice to a function');
+    if (!('code' in obj)) throw new CompilerError('Wasm', 'Can not set code to non module function');
+    if (obj.code !== null) throw new CompilerError('Wasm', 'Trying to set code twice to a function');
     obj.code = Array.isArray(code) ? new Uint8Array(code) : code;
   }
 }

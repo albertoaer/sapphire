@@ -1,12 +1,13 @@
-import { parser, sapp, ResolutionEnv, FunctionResolutionEnv, ParserError, FetchedInstanceFunc } from './common.ts';
+import { parser, sapp, ResolutionEnv, FunctionResolutionEnv, FetchedInstanceFunc } from './common.ts';
 import { ExpressionGenerator } from './expression_generator.ts';
+import { ParserError } from '../errors.ts';
 
 export class Parameters {
   constructor(private readonly params: [string | null, sapp.Type][]) { }
 
   get(name: string): [number, sapp.Type] | undefined {
     const i = this.params.findIndex(n => n[0] === name);
-    if (i !== undefined) return [i, this.params[i][1]];
+    if (i >= 0) return [i, this.params[i][1]];
   }
 }
 
@@ -45,7 +46,7 @@ export class Locals {
 
   get(name: string): [number, sapp.Type] | undefined {
     const i = this.locals.findIndex(n => n[0] === name);
-    if (i !== undefined) return [i, this.locals[i][1]];
+    if (i >= 0) return [i, this.locals[i][1]];
   }
 }
 

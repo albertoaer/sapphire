@@ -1,17 +1,9 @@
-import { ModuleParser } from "./module_parser.ts";
-import { Tokenizer } from "./tokenizer.ts";
-import * as sapp from "./sapp.ts"
-import { ModuleGenerator } from "./generator/module_generator.ts";
+import { Parser } from "./parser.ts";
 
-export const createParserFor = (code: string): ModuleParser => new ModuleParser(new Tokenizer().getTokenList(code));
+export const createParserFor = (source: string): Parser => new Parser({ source });
 
-export function fastParse(code: string): ModuleParser {
+export function fastParse(code: string): Parser {
   const parser = createParserFor(code);
   parser.parse();
   return parser;
-}
-
-export function getModule(code: string): sapp.Module {
-  const gen = new ModuleGenerator(new Map(), 'virtual', fastParse(code).definitions);
-  return gen.module;
 }

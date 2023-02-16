@@ -1,14 +1,7 @@
-import * as parser from '../module_parser.ts';
-export * as parser from '../module_parser.ts';
+import * as parser from '../parser/common.ts';
+export * as parser from '../parser/common.ts';
 import * as sapp from '../sapp.ts';
 export * as sapp from '../sapp.ts';
-export { ParserError, FeatureError } from '../common.ts';
-
-export class MatchTypeError extends Error {
-  constructor(line: number, a: sapp.Type, b: sapp.Type) {
-    super(`TypeError at line ${line}, ${a.toString()} expected to be ${b.toString()}`);
-  }
-}
 
 export type FetchedInstanceFunc = {
   funcGroup: sapp.Func[],
