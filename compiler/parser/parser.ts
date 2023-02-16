@@ -240,7 +240,8 @@ export class Parser {
 
   parseDef() {
     const line = this.tokens.line;
-    const name = this.tokens.expectNext({ type: 'identifier' }).value;
+    const opname = this.tokens.nextIs({ type: 'operator' })?.value;
+    const name = opname ? opname : this.tokens.expectNext({ type: 'identifier' }).value;
     const functions: Func[] = [];
     const structs: Struct[] = [];
     while (!this.tokens.nextIs({ value: 'end' })) {
