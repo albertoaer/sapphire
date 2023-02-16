@@ -1,39 +1,39 @@
 import { assertThrows, assertEquals } from "https://deno.land/std@0.174.0/testing/asserts.ts";
-import { createParserFor } from "./test_utils.ts";
+import { parserFor } from "./test_utils.ts";
 
 Deno.test('must parse', () => {
   const meta = { line: 1 };
 
-  assertEquals(createParserFor('int{4}').parseType(),
+  assertEquals(parserFor('int{4}').parseType(),
     { base: { route: ['int'], meta }, meta, array: { size: 4 } }
   ); 
-  assertEquals(createParserFor('[int{}, float]').parseType(),
+  assertEquals(parserFor('[int{}, float]').parseType(),
     { base: [
       { base: { route: ['int'], meta }, meta, array: { size: undefined} },
       { base: { route: ['float'], meta }, meta, array: undefined }
       ], meta, array: undefined
     }
   ); 
-  assertEquals(createParserFor('.b.c').parseName('a'), ['a', 'b', 'c']); 
-  assertEquals(createParserFor('int a, float{}, _ var)').parseHeuristicList({ value: ')' }), [
+  assertEquals(parserFor('.b.c').parseName('a'), ['a', 'b', 'c']); 
+  assertEquals(parserFor('int a, float{}, _ var)').parseHeuristicList({ value: ')' }), [
     { name: 'a', meta, type: { base: { route: ['int'], meta },  meta, array: undefined } },
     { name: null, meta, type: { base: { route: ['float'], meta },  meta, array: { size: undefined } }},
     { name: 'var', meta, type: null },
   ]);
   {
-    const expr = createParserFor('int x, string y) () . end');
+    const expr = parserFor('int x, string y) () . end');
     assertEquals(expr.parseArgList({ value: ')' }), [
       { name: 'x', meta, type: { base: { route: ['int'], meta },  meta, array: undefined } },
       { name: 'y', meta, type: { base: { route: ['string'], meta }, meta, array: undefined } },
     ]);
     assertEquals(expr.remain(), ['(', ')', '.', 'end'].map(x => { return { type: 'keyword', value: x, line: 1 } }));
   }
-  assertEquals(createParserFor('true').tryParseLiteral(), { type: 'bool', meta, value: 'true' });
-  assertEquals(createParserFor('! . + .').parseExpression(), {
+  assertEquals(parserFor('true').tryParseLiteral(), { type: 'bool', meta, value: 'true' });
+  assertEquals(parserFor('! . + .').parseExpression(), {
     id: 'call', func: { route: ['+'], meta }, meta,
     args: [{ id: 'call', func: { route: ['!'], meta }, args: [{ id: 'none', meta }], meta }, { id: 'none', meta }]
   });
-  assertEquals(createParserFor('a.b(f.g, 3) * .').parseExpression(), {
+  assertEquals(parserFor('a.b(f.g, 3) * .').parseExpression(), {
     id: 'call', func: { route: ['*'], meta }, args: [
       {
         id: 'call', func: { route: ['a', 'b'], meta }, meta,
@@ -44,7 +44,7 @@ Deno.test('must parse', () => {
       },
       { id: 'none', meta }
   ], meta });
-  assertEquals(createParserFor('++a.b.c(false) / .').parseExpression(), {
+  assertEquals(parserFor('++a.b.c(false) / .').parseExpression(), {
     id: 'call', func: { route: ['/'], meta }, args: [
       { id: 'call', func: { route: ['++'], meta }, args: [
         { id: 'call', func: { route: ['a', 'b', 'c'], meta }, args: [
@@ -53,7 +53,7 @@ Deno.test('must parse', () => {
       ], meta },
       { id: 'none', meta }
   ], meta });
-  assertEquals(createParserFor('2 + if smt.fn() then 1 else 0 end').parseExpression(), {
+  assertEquals(parserFor('2 + if smt.fn() then 1 else 0 end').parseExpression(), {
     id: 'call', func: { route: ['+'], meta }, args: [
       { id: 'literal', value: { type: 'int', value: '2', meta }, meta },
       { id: 'if', meta,
@@ -62,7 +62,7 @@ Deno.test('must parse', () => {
         else: { id: 'literal', meta, value: { type: 'int', value: '0', meta } }
       }
   ], meta });
-  assertEquals(createParserFor('if a then b else if c then d else e end').parseExpression(), {
+  assertEquals(parserFor('if a then b else if c then d else e end').parseExpression(), {
     id: 'if', meta,
     cond: { id: 'value', name: { route: ['a'], meta }, meta },
     then: { id: 'value', name: { route: ['b'], meta }, meta },
@@ -73,7 +73,7 @@ Deno.test('must parse', () => {
       else: { id: 'value', name: { route: ['e'], meta }, meta }
     }
   });
-  assertEquals(createParserFor('a.c[b.c(),2,"hello"].x.y').parseExpression(), {
+  assertEquals(parserFor('a.c[b.c(),2,"hello"].x.y').parseExpression(), {
     id: 'get', name: { route: ['x', 'y'], meta }, meta, origin: {
       id: 'index', meta, origin: { id: 'value', name: { route: ['a', 'c'], meta }, meta }, args: [
         { id: 'call', func: { route: ['b', 'c'], meta }, args: [], meta },
@@ -82,10 +82,21 @@ Deno.test('must parse', () => {
       ]
     }
   });
+  assertEquals(parserFor('a = (4 * b.c)').parseExpression(), {
+    id: 'assign', name: { meta, route: ['a'] },
+    value: {
+      id: 'call', func: { meta, route: ['*'] },
+      args: [ 
+        { id: 'literal', value: { meta, type: 'int', value: '4' }, meta },
+        { id: "value", name: { meta, route: ['b', 'c'] }, meta }
+      ],
+      meta
+    }, meta
+  })
 });
 
 Deno.test('must not parse', () => {
-  assertThrows(() => createParserFor('string{').parseType());
-  assertThrows(() => createParserFor('int a, float').parseHeuristicList({ value: ')' }));
-  assertThrows(() => createParserFor('int a, _)').parseArgList({ value: ')' }))
+  assertThrows(() => parserFor('string{').parseType());
+  assertThrows(() => parserFor('int a, float').parseHeuristicList({ value: ')' }));
+  assertThrows(() => parserFor('int a, _)').parseArgList({ value: ')' }))
 });

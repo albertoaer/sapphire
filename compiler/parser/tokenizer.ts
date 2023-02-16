@@ -10,10 +10,10 @@ export const Keywords = [
   'def', 'except', 'extend', 'open', 'use', 'it',
   'if','then', 'else', 'end', 'struct', 'priv', 'as',
   'into', 'this', 'ensured', 'implicit', 'true', 'false',
-  '(', ')', '[', ']', '{', '}', ';', ',', '.', ':', '_'
+  '(', ')', '[', ']', '{', '}', ';', ',', '.', ':', '_', '='
 ] as const
 
-export const OperatorList = '^*+-%&$/@!|=<>';
+export const OperatorList = '^*+-%&$/@!|<>';
 
 const isOpChar = (c: string) => c.length == 1 && OperatorList.includes(c)
 

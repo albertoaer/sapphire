@@ -1,5 +1,5 @@
 import {
-  Import, Def, Literal, Type, ArgList, Expression, Func, HeuristicList, Struct
+  Import, Def, Literal, Type, ArgList, Expression, Func, HeuristicList, Struct, ParserRoute
 } from "./common.ts";
 import { ParserError } from '../errors.ts';
 import { TokenList, TokenExpect, Token, Tokenizer } from './tokenizer.ts';
@@ -93,6 +93,10 @@ export class Parser {
     return { id: 'if', cond, then, else: branch, meta: { line: this.tokens.line } };
   }
 
+  parseAssignment(route: ParserRoute): Expression {
+    return { id: 'assign', name: route, meta: { line: this.tokens.line }, value: this.parseExpression() };
+  }
+
   parseExpressionTerm(): Expression {
     if (this.tokens.nextIs({ value: 'if' })) return this.parseIf();
     if (this.tokens.nextIs({ value: '.' })) return { id: 'none', meta: { line: this.tokens.line } };
@@ -106,6 +110,10 @@ export class Parser {
     const id = this.tokens.nextIs({ type: 'identifier' });
     if (id) {
       const route = this.parseName(id.value);
+
+      if (this.tokens.nextIs({ value: '=' }))
+        return this.parseAssignment({ route, meta: { line: this.tokens.line } });
+
       const args = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
       const line = this.tokens.line;
       if (args !== undefined) return { id: 'call', func: { route, meta: { line } }, args: args, meta: { line: this.tokens.line } };
