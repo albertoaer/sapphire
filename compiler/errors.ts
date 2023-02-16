@@ -6,8 +6,11 @@ export class ParserError extends Error {
   }
 }
 
+export type RegisteredUnsuportedFeature =
+  'Attribute Access' | 'Struct Building' | 'Indexation' | 'Call Returned Function'
+
 export class FeatureError extends Error {
-  constructor(line: number, feature: string) {
+  constructor(line: number, feature: RegisteredUnsuportedFeature) {
     super(`Error at line ${line}, feature "${feature}" is not supported yet`);
   }
 }

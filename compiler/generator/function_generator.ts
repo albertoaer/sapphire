@@ -64,7 +64,7 @@ class Function implements sapp.Func {
   complete(source: sapp.Expression, locals: sapp.Type[], output: sapp.Type) {
     this._source = source;
     this._locals = locals;
-    if (this.output !== undefined && this.output.isEquals(output))
+    if (this.output !== undefined && !this.output.isEquals(output))
         throw new ParserError(this.meta.line, 'Return type does not match expected return');
     this.output = output;
   }
@@ -92,7 +92,7 @@ export class FunctionGenerator implements FunctionResolutionEnv {
   private readonly _func: Function;
   private readonly _prms: Parameters;
   private readonly _lcls: Locals = new Locals();
-  private _processed: boolean;
+  private _treated: boolean;
 
   constructor(
     func: parser.Func,
@@ -106,7 +106,7 @@ export class FunctionGenerator implements FunctionResolutionEnv {
     this._prms = new Parameters(args);
     this._expr = new ExpressionGenerator(this, func.source);
     this._func = new Function(this.inputs, this.fullInputs, func.meta, output);
-    this._processed = false;
+    this._treated = false;
   }
   
   scoped<T>(action: () => T): T {
@@ -127,15 +127,16 @@ export class FunctionGenerator implements FunctionResolutionEnv {
     if (name.route[0] === undefined) throw new ParserError(name.meta.line, 'Empty route');
     const v = this.getNoThrow(name.route[0]);
     if (v) {
-      if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property ${name.route[1]}`);
+      if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property: ${name.route[1]}`);
       return v;
     }
     throw new ParserError(name.meta.line, `Symbol not found: ${name.route[0]}`);
   }
 
   setValue(name: parser.ParserRoute, tp: sapp.Type): number {
-    if (this.getNoThrow(name.route[0])) throw new ParserError(name.meta.line, `Already exists ${name.route[0]}`);
-    if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property ${name.route[1]}`);
+    if (this.getNoThrow(name.route[0]))
+      throw new ParserError(name.meta.line, `Already assigned a value to: ${name.route[0]}`);
+    if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property: ${name.route[1]}`);
     return this._lcls.insert(name.route[0], tp);
   }
   
@@ -148,10 +149,10 @@ export class FunctionGenerator implements FunctionResolutionEnv {
   }
 
   generate() {
-    if (!this._processed) {
+    if (!this._treated) {
+      this._treated = true;
       const [source, output] = this._expr.process();
       this._func.complete(source, this._lcls.collect(), output);
-      this._processed = true;
     }
   }
 

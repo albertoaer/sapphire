@@ -17,7 +17,7 @@ export class ExpressionGenerator {
   }
 
   private processCall(ex: parser.Expression & { id: 'call' }): [sapp.Expression, sapp.Type] {
-    if (!('route' in ex.func)) throw new FeatureError(ex.meta.line, 'Call expression result');
+    if (!('route' in ex.func)) throw new FeatureError(ex.meta.line, 'Call Returned Function');
     const callArgs = ex.args.map(x => this.processEx(x));
     const args = callArgs.map(x => x[0]);
     const func = this.env.fetchFunc(ex.func, callArgs.map(x => x[1]));
@@ -55,7 +55,7 @@ export class ExpressionGenerator {
   }
 
   private processBuild({ meta }: parser.Expression & { id: 'build' }): [sapp.Expression, sapp.Type] {
-    throw new FeatureError(meta.line, 'Build structure');
+    throw new FeatureError(meta.line, 'Struct Building');
   }
 
   private processNone(_: parser.Expression & { id: 'none' }): [sapp.Expression, sapp.Type] {
@@ -66,7 +66,7 @@ export class ExpressionGenerator {
     switch (ex.id) {
       case 'assign': return this.processAssign(ex);
       case 'call': return this.processCall(ex);
-      case 'get': throw new FeatureError(ex.meta.line, 'Get property');
+      case 'get': throw new FeatureError(ex.meta.line, 'Attribute Access');
       case 'group': return this.processGroup(ex);
       case 'if': return this.processIf(ex);
       case 'index': return this.processIndex(ex);

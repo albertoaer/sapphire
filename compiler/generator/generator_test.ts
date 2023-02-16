@@ -13,6 +13,17 @@ const sum: Func = {
   source: { resolution: 'find', id: 'i32sum' }
 }
 
+const mult: Func = {
+  ...sum,
+  source: { resolution: 'find', id: 'i32mult' }
+}
+
+const greater: Func = {
+  ...sum,
+  outputSignature: new Type('bool'),
+  source: { resolution: 'find', id: 'i32greater' }
+}
+
 generator.overwriteKernel({
   route: 'kernel:test',
   defs: {
@@ -24,11 +35,55 @@ generator.overwriteKernel({
       getFunc: (_a, _b) => sum,
       instanceFuncs: [],
       getInstanceFunc: (_a, _b) => undefined
+    },
+    '*': {
+      name: '*',
+      route: 'kernel:test',
+      instanceOverloads: 0,
+      funcs: [mult],
+      getFunc: (_a, _b) => mult,
+      instanceFuncs: [],
+      getInstanceFunc: (_a, _b) => undefined
+    },
+    '>': {
+      name: '>',
+      route: 'kernel:test',
+      instanceOverloads: 0,
+      funcs: [greater],
+      getFunc: (_a, _b) => greater,
+      instanceFuncs: [],
+      getInstanceFunc: (_a, _b) => undefined
     }
   }
 })
 
 const genTest = (src: string): Module => generator.generateModule('virtual:test', src);
+
+Deno.test('must generate, expression targeted', () => {
+  const codes = [
+    `def Test
+      f(i32 z) z;
+      a(i32 x) if true then (y = f(2), f(y)) else 5 end;
+      b(i32 x, i32 y) z = Test.a(x + y), Test.a(z);
+    end`,
+    `def Test
+      f(i32 a, i32 b) a + b;
+      smt(i32 x): i32 (y = f(x, x), smt(x + y))
+    end`,
+    `def Test
+      f(i32 a, i32 b) a + b;
+      smt(i32 x): i32 if x > 100 then (
+          y = f(x, x),
+          smt(x + y)
+        ) else x end
+    end`,
+    `def Test someFunc(i32 x, i32 y)
+      z = x + y,
+      z * 2
+    end`
+    ];
+    codes.forEach(genTest);
+})
 
 Deno.test('must generate, types targeted', () => {
   const codes = [
@@ -41,24 +96,6 @@ Deno.test('must generate, types targeted', () => {
     [string] f() .;
     struct i32
     [i32] f() .;
-  end`,
-  `def Test
-    f(i32 a, i32 b) a + b;
-    smt(i32 x) (
-        y = f(x, x),
-        smt(x + y)
-      )
-  end`,
-  `def Test
-    f(i32 a, i32 b) a + b;
-    smt(i32 x) if x > 100 then (
-        y = f(x, x),
-        smt(x + y)
-      ) else x end
-  end`,
-  `def Test someFunc(i32 x, i32 y)
-    z = x + y,
-    z * 2
   end`,
   `def Test
     struct string
