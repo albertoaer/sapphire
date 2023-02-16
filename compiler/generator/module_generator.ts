@@ -51,6 +51,10 @@ export class ModuleGenerator implements ResolutionEnv {
 
   fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
     if (route.route[0] === undefined) throw new ParserError(route.meta.line, 'Empty route');
+    if (route.route[0] in this.defs)
+      return this.defs[route.route[0]].fetchFunc(
+        { route: route.route.slice(1), meta: route.meta }, inputSignature
+      );
     const r = this.globals.get(route.route[0]);
     if (!r) throw new ParserError(route.meta.line, `Symbol not found: ${route.route[0]}`);
     let def = r;

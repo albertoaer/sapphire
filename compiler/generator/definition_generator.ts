@@ -1,6 +1,6 @@
 import { sapp, parser, ResolutionEnv, FetchedInstanceFunc } from './common.ts';
 import { FunctionGenerator } from './function_generator.ts';
-import { ParserError } from '../errors.ts';
+import { FeatureError, ParserError } from '../errors.ts';
 
 export class Definition implements sapp.Def {
   constructor(
@@ -84,18 +84,14 @@ export class DefinitionGenerator implements ResolutionEnv {
   }
 
   fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
-    {
-      const name = route.route[0] === this.def.name ? 1 : 0;
-      if (route.route[name]) {
-        const funcArr = this.functions[route.route[name]];
-        if (funcArr !== undefined) {
-          const func = funcArr.find(x => x.inputs.every((x, i) => x.isEquals(inputSignature[i])));
-          if (func === undefined)
-            throw new ParserError(route.meta.line, `Invalid signature for function ${route.route[name]}`)
-          if (route.route[name + 1]) throw new ParserError(route.meta.line, 'Function has no property');
-          return func.func;
-        }
-        }
+    const name = route.route[0] ?? ''; // Empty name method if no name provided
+    const funcArr = this.functions[name];
+    if (funcArr !== undefined) {
+      const func = funcArr.find(x => x.inputs.every((x, i) => x.isEquals(inputSignature[i])));
+      if (func === undefined)
+        throw new ParserError(route.meta.line, `Invalid signature for function ${this.def.name}.${name}(...)`)
+      if (route.route[1]) throw new FeatureError(route.meta.line, 'Function Attributes');
+      return func.func;
     }
     return this.env.fetchFunc(route, inputSignature);
   }

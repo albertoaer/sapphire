@@ -77,9 +77,13 @@ Deno.test('must generate, expression targeted', () => {
           smt(x + y)
         ) else x end
     end`,
-    `def Test someFunc(i32 x, i32 y)
+    `
+    def **
+      (i32 a, i32 b) (a * a) + (b * b)
+    end
+    def Test someFunc(i32 x, i32 y)
       z = x + y,
-      z * 2
+      z ** 2
     end`
     ];
     codes.forEach(genTest);
