@@ -5,7 +5,7 @@ import { Generator } from './generator.ts'
 
 const generator = new Generator();
 
-const sum: Func = {
+const add: Func = {
   fullInputSignature: [new Type('i32'), new Type('i32')],
   inputSignature: [new Type('i32'), new Type('i32')],
   locals: [],
@@ -14,12 +14,12 @@ const sum: Func = {
 }
 
 const mult: Func = {
-  ...sum,
+  ...add,
   source: { resolution: 'find', id: 'i32mult' }
 }
 
 const greater: Func = {
-  ...sum,
+  ...add,
   outputSignature: new Type('bool'),
   source: { resolution: 'find', id: 'i32greater' }
 }
@@ -31,28 +31,22 @@ generator.overwriteKernel({
       name: '+',
       route: 'kernel:test',
       instanceOverloads: 0,
-      funcs: [sum],
-      getFunc: (_a, _b) => sum,
-      instanceFuncs: [],
-      getInstanceFunc: (_a, _b) => undefined
+      funcs: { '': [add] },
+      instanceFuncs: {}
     },
     '*': {
       name: '*',
       route: 'kernel:test',
       instanceOverloads: 0,
-      funcs: [mult],
-      getFunc: (_a, _b) => mult,
-      instanceFuncs: [],
-      getInstanceFunc: (_a, _b) => undefined
+      funcs: { '': [mult] },
+      instanceFuncs: {}
     },
     '>': {
       name: '>',
       route: 'kernel:test',
       instanceOverloads: 0,
-      funcs: [greater],
-      getFunc: (_a, _b) => greater,
-      instanceFuncs: [],
-      getInstanceFunc: (_a, _b) => undefined
+      funcs: { '': [greater] },
+      instanceFuncs: {}
     }
   }
 })

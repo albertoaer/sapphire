@@ -65,7 +65,9 @@ export class ModuleGenerator implements ResolutionEnv {
       i++;
     }
     const name = route.route[i] === undefined ? "" : route.route[i];
-    const f = (def as sapp.Def).getFunc(name, inputSignature);
+    const f = (def as sapp.Def).funcs[name].find(
+      x => x.inputSignature.every((x, i) => x.isEquals(inputSignature[i]))
+    );
     if (f === undefined)
       throw new ParserError(route.meta.line, (def as sapp.Def).name + (name ? `.${name}` : '') + ' cannot be called');
     if (route.route[i + 1] !== undefined) throw new ParserError(route.meta.line, 'Function has no property');

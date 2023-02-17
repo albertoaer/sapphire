@@ -103,11 +103,9 @@ export interface Def {
   readonly route: ModuleRoute;
   readonly name: string;
   readonly instanceOverloads: number;
-  readonly funcs: Func[];
-  readonly instanceFuncs: Func[][];
 
-  getFunc(name: string, inputSignature: Type[]): Func | undefined;
-  getInstanceFunc(name: string, inputSignature: Type[]): Func[] | undefined;
+  readonly funcs: { [name in string]: Func[] };
+  readonly instanceFuncs: { [name in string]: Func[][] };
 }
 
 export type GlobalObject = Module | Def
