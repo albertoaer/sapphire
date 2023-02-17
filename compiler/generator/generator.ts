@@ -1,7 +1,7 @@
 import { sapp, parser } from './common.ts';
 import { Parser } from '../parser/parser.ts';
 import { TokenList } from '../parser/tokenizer.ts';
-import { ModuleGenerator } from "./module_generator.ts";
+import { ModuleGenerator } from "./module.ts";
 import { DependencyError } from '../errors.ts';
 
 export interface ModuleProvider {

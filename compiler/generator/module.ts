@@ -1,5 +1,5 @@
 import { ResolutionEnv, sapp, parser, FetchedInstanceFunc } from "./common.ts";
-import { DefinitionGenerator } from "./definition_generator.ts";
+import { DefinitionGenerator } from "./definition.ts";
 import { ParserError } from "../errors.ts";
 
 export class ModuleGenerator implements ResolutionEnv {

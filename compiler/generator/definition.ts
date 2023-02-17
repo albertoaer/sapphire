@@ -1,5 +1,5 @@
 import { sapp, parser, ResolutionEnv, FetchedInstanceFunc } from './common.ts';
-import { FunctionGenerator } from './function_generator.ts';
+import { FunctionGenerator } from './function.ts';
 import { FeatureError, ParserError } from '../errors.ts';
 
 export class Definition implements sapp.Def {

@@ -1,5 +1,5 @@
 import { parser, sapp, ResolutionEnv, FunctionResolutionEnv, FetchedInstanceFunc } from './common.ts';
-import { ExpressionGenerator } from './expression_generator.ts';
+import { ExpressionGenerator } from './expression.ts';
 import { ParserError } from '../errors.ts';
 
 export class Parameters {
