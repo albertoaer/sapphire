@@ -2,19 +2,6 @@ import { sapp, parser, ResolutionEnv, FetchedInstanceFunc } from './common.ts';
 import { FunctionGenerator } from './function.ts';
 import { FeatureError, ParserError } from '../errors.ts';
 
-export class Definition implements sapp.Def {
-  constructor(
-    public readonly name: string,
-    public readonly route: sapp.ModuleRoute,
-    public readonly instanceOverloads: number,
-    // Functions under a name always have different input signature
-    public readonly funcs: { [name in string]: sapp.Func[] },
-    
-    // Functions under a name and index always have different full input signature but same input signature
-    public readonly instanceFuncs: { [name in string]: sapp.Func[][] }
-  ) {}
-}
-
 class InstanceFunction {
   // Each index is a struct
   private readonly functionsByStruct: (FunctionGenerator | undefined)[];
@@ -125,13 +112,19 @@ export class DefinitionGenerator implements ResolutionEnv {
   }
 
   private createDef(): sapp.Def {
-    const functions = Object.fromEntries(Object.entries(this.functions).map(
+    const funcs = Object.fromEntries(Object.entries(this.functions).map(
       ([n, f]) => [n, f.map(f => f.func)]
     ));
-    const instanceFunctions = Object.fromEntries(Object.entries(this.instanceFunctions).map(
+    const instanceFuncs = Object.fromEntries(Object.entries(this.instanceFunctions).map(
       ([n, f]) => [n, f.map(f => f.functions)]
     ));
-    return new Definition(this.def.name, this.route, this.structs.length, functions, instanceFunctions);
+    return {
+      name: this.def.name,
+      route: this.route,
+      instanceOverloads: this.structs.length,
+      funcs,
+      instanceFuncs
+    }
   }
 
   generate(): sapp.Def {
