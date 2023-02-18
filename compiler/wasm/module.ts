@@ -38,7 +38,10 @@ export enum WasmType {
 }
 
 export type WasmFunction = {
-  code: Uint8Array | null,
+  body: {
+    code: Uint8Array,
+    locals: WasmType[]
+  } | null,
   input: WasmType[],
   output: WasmType[]
 }
@@ -99,11 +102,11 @@ export class WasmModule {
   }
   
   private getFunctionsCode(): number[] {
-    const functions = this.functions.map(x => 'code' in x ? x : null).filter(x => x !== null);
+    const functions: WasmFunction[] = this.functions.filter(x => 'body' in x) as WasmFunction[];
     if (!functions.length) return [];
     return section(WasmSection.Code, encoding.encodeVector(functions.map(x => {
-      if (x!.code === null) throw new CompilerError('Wasm', 'Undefined function code');
-      return encoding.encodeVector([...encoding.encodeVector([]), ...x!.code, 0x0b]);
+      if (x.body === null) throw new CompilerError('Wasm', 'Undefined function code');
+      return encoding.encodeVector([...encoding.encodeVector(x.body.locals), ...x.body.code, 0x0b]);
     })));
   }
   
@@ -127,7 +130,7 @@ export class WasmModule {
 
   define(input: WasmType[], output: WasmType[], options?: { main?: boolean, export?: string }): number {
     const id = this.functions.length;
-    this.functions.push({ code: null, input, output });
+    this.functions.push({ body: null, input, output });
     if (options) {
       if (options.main) {
         if (this.mainFunction === undefined) this.mainFunction = id;
@@ -138,12 +141,15 @@ export class WasmModule {
     return id;
   }
 
-  setCode(id: number, code: number[] | Uint8Array) {
+  setBody(id: number, locals: WasmType[], code: number[] | Uint8Array) {
     if (id < 0 || id >= this.functions.length)
-      throw new CompilerError('Wasm', 'Trying to set code to an invalid function');
+      throw new CompilerError('Wasm', 'Trying to set body to an invalid function');
     const obj = this.functions[id];
-    if (!('code' in obj)) throw new CompilerError('Wasm', 'Can not set code to non module function');
-    if (obj.code !== null) throw new CompilerError('Wasm', 'Trying to set code twice to a function');
-    obj.code = Array.isArray(code) ? new Uint8Array(code) : code;
+    if (!('body' in obj)) throw new CompilerError('Wasm', 'Can not set body to non module function');
+    if (obj.body !== null) throw new CompilerError('Wasm', 'Trying to set body twice to a function');
+    obj.body = {
+      locals,
+      code: Array.isArray(code) ? new Uint8Array(code) : code
+    }
   }
 }
