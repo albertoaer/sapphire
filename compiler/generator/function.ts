@@ -61,12 +61,12 @@ class Function implements sapp.Func {
     private output?: sapp.Type
   ) { }
 
-  complete(source: sapp.Expression, locals: sapp.Type[], output: sapp.Type) {
+  complete(source: sapp.Expression, locals: sapp.Type[]) {
     this._source = source;
     this._locals = locals;
-    if (this.output !== undefined && !this.output.isEquals(output))
+    if (this.output !== undefined && !this.output.isEquals(source.type))
         throw new ParserError(this.meta.line, 'Return type does not match expected return');
-    this.output = output;
+    this.output = source.type;
   }
 
   get source(): sapp.Expression {
@@ -116,14 +116,14 @@ export class FunctionGenerator implements FunctionResolutionEnv {
     return result;
   }
 
-  private getNoThrow(name: string): [sapp.Expression & { name: number; }, sapp.Type] | undefined {
+  private getNoThrow(name: string): sapp.Expression & { name: number; } | undefined {
     const local = this._lcls.get(name);
-    if (local) return [{ id: 'local_get', name: local[0] }, local[1]];
+    if (local) return { id: 'local_get', name: local[0], type: local[1] };
     const param = this._prms.get(name);
-    if (param) return [{ id: 'param_get', name: param[0] }, param[1]];
+    if (param) return { id: 'param_get', name: param[0], type: param[1] };
   }
 
-  getValue(name: parser.ParserRoute): [sapp.Expression & { name: number; }, sapp.Type] {
+  getValue(name: parser.ParserRoute): sapp.Expression & { name: number; } {
     if (name.route[0] === undefined) throw new ParserError(name.meta.line, 'Empty route');
     const v = this.getNoThrow(name.route[0]);
     if (v) {
@@ -151,8 +151,7 @@ export class FunctionGenerator implements FunctionResolutionEnv {
   generate() {
     if (!this._treated) {
       this._treated = true;
-      const [source, output] = this._expr.process();
-      this._func.complete(source, this._lcls.collect(), output);
+      this._func.complete(this._expr.process(), this._lcls.collect());
     }
   }
 

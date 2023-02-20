@@ -1,68 +1,66 @@
 import { sapp, parser, FunctionResolutionEnv, basicInferLiteral } from './common.ts';
 import { ParserError, FeatureError, MatchTypeError } from "../errors.ts";
-import { Type } from '../sapp.ts';
 
 export class ExpressionGenerator {
-  private processed: [sapp.Expression, sapp.Type] | null = null;
+  private processed: sapp.Expression | null = null;
 
   constructor(
     private readonly env: FunctionResolutionEnv,
     private readonly expression: parser.Expression
   ) {}
 
-  private processAssign(ex: parser.Expression & { id: 'assign' }): [sapp.Expression, sapp.Type] {
+  private processAssign(ex: parser.Expression & { id: 'assign' }): sapp.Expression {
     const val = this.processEx(ex.value);
-    const name = this.env.setValue(ex.name, val[1]);
-    return [{ id: 'local_set', name, value: val[0] }, new Type('void')];
+    const name = this.env.setValue(ex.name, val.type);
+    return { id: 'local_set', name, value: val, type: sapp.Void };
   }
 
-  private processCall(ex: parser.Expression & { id: 'call' }): [sapp.Expression, sapp.Type] {
+  private processCall(ex: parser.Expression & { id: 'call' }): sapp.Expression {
     if (!('route' in ex.func)) throw new FeatureError(ex.meta.line, 'Call Returned Function');
-    const callArgs = ex.args.map(x => this.processEx(x));
-    const args = callArgs.map(x => x[0]);
-    const func = this.env.fetchFunc(ex.func, callArgs.map(x => x[1]));
+    const args = ex.args.map(x => this.processEx(x));
+    const func = this.env.fetchFunc(ex.func, args.map(x => x.type));
     return 'owner' in func
-      ? [{ id: 'call_instanced', args, func: func.funcGroup, owner: func.owner }, func.funcGroup[0].outputSignature]
-      : [{ id: 'call', args, func }, func.outputSignature];
+      ? { id: 'call_instanced', args, func: func.funcGroup, owner: func.owner, type: func.funcGroup[0].outputSignature } 
+      : { id: 'call', args, func, type: func.outputSignature };
   }
   
-  private processGroup({ exprs, meta }: parser.Expression & { id: 'group' }): [sapp.Expression, sapp.Type] {
+  private processGroup({ exprs, meta }: parser.Expression & { id: 'group' }): sapp.Expression {
     if (exprs.length === 0) throw new ParserError(meta.line, 'Empty group');
     const group = this.env.scoped(() => exprs.map(x => this.processEx(x)));
-    return [{ id: 'group', exprs: group.map(x => x[0]) }, group.at(-1)?.[1] as sapp.Type];
+    return { id: 'group', exprs: group.map(x => x), type: group.at(-1)?.type! };
   }
 
-  private processIf(ex: parser.Expression & { id: 'if' }): [sapp.Expression, sapp.Type] {
-    const [cond_, boolExp] = this.processEx(ex.cond);
-    if (boolExp.base !== 'bool') throw new MatchTypeError(ex.meta.line, boolExp, new sapp.Type('bool'));
-    const [else_, branchA] = this.processEx(ex.else);
-    const [then_, branchB] = this.processEx(ex.then);
-    if (!branchA.isEquals(branchB)) throw new MatchTypeError(ex.meta.line, branchA, branchB);
-    return [{ id: 'if', cond: cond_, else: else_, then: then_ }, branchA];
+  private processIf(ex: parser.Expression & { id: 'if' }): sapp.Expression {
+    const cond_ = this.processEx(ex.cond);
+    if (cond_.type.base !== 'bool') throw new MatchTypeError(ex.meta.line, cond_.type, new sapp.Type('bool'));
+    const then_ = this.processEx(ex.then);
+    const else_ = this.processEx(ex.else);
+    if (!else_.type.isEquals(then_.type)) throw new MatchTypeError(ex.meta.line, else_.type, else_.type);
+    return { id: 'if', cond: cond_, else: else_, then: then_, type: then_.type };
   }
   
-  private processIndex(ex: parser.Expression & { id: 'index' }): [sapp.Expression, sapp.Type] {
+  private processIndex(ex: parser.Expression & { id: 'index' }): sapp.Expression {
     throw new FeatureError(ex.meta.line, 'Indexation');
   }
   
-  private processLiteral({ value }: parser.Expression & { id: 'literal' }): [sapp.Expression, sapp.Type] {
+  private processLiteral({ value }: parser.Expression & { id: 'literal' }): sapp.Expression {
     const literal: sapp.Literal = basicInferLiteral(value);
-    return [{ id: 'literal', value: literal }, new sapp.Type(literal.type)];
+    return { id: 'literal', value: literal, type: new sapp.Type(literal.type) };
   }
 
-  private processValue({ name }: parser.Expression & { id: 'value' }): [sapp.Expression, sapp.Type] {
+  private processValue({ name }: parser.Expression & { id: 'value' }): sapp.Expression {
     return this.env.getValue(name);
   }
 
-  private processBuild({ meta }: parser.Expression & { id: 'build' }): [sapp.Expression, sapp.Type] {
+  private processBuild({ meta }: parser.Expression & { id: 'build' }): sapp.Expression {
     throw new FeatureError(meta.line, 'Struct Building');
   }
 
-  private processNone(_: parser.Expression & { id: 'none' }): [sapp.Expression, sapp.Type] {
-    return [{ id: 'none' }, new sapp.Type('void')]
+  private processNone(_: parser.Expression & { id: 'none' }): sapp.Expression {
+    return { id: 'none', type: sapp.Void };
   }
 
-  private processEx(ex: parser.Expression): [sapp.Expression, sapp.Type] {
+  private processEx(ex: parser.Expression): sapp.Expression {
     switch (ex.id) {
       case 'assign': return this.processAssign(ex);
       case 'call': return this.processCall(ex);
@@ -77,7 +75,7 @@ export class ExpressionGenerator {
     }
   }
 
-  process(): [sapp.Expression, sapp.Type] {
+  process(): sapp.Expression {
     if (this.processed === null) this.processed = this.processEx(this.expression);
     return this.processed;
   }
