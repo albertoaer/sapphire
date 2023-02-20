@@ -96,7 +96,7 @@ export class WasmModule {
   }
 
   private getFunctions(): number[] {
-    const functions = this.functions.map((x, idx) => 'code' in x ? idx : null).filter(x => x !== null);
+    const functions = this.functions.map((x, idx) => 'body' in x ? idx : null).filter(x => x !== null);
     if (functions.length === 0) return [];
     return section(WasmSection.Function, encoding.encodeVector(functions.map(x => encoding.unsignedLEB128(x!))));
   }
@@ -146,10 +146,7 @@ export class WasmModule {
     if (obj === undefined) throw new CompilerError('Wasm', 'Trying to set body to an invalid function');
     if (!('body' in obj)) throw new CompilerError('Wasm', 'Can not set body to non module function');
     if (obj.body !== null) throw new CompilerError('Wasm', 'Trying to set body twice to a function');
-    obj.body = {
-      locals,
-      code: Array.isArray(code) ? new Uint8Array(code) : code
-    }
+    obj.body = { locals, code: Array.isArray(code) ? new Uint8Array(code) : code };
   }
 
   isCompleted(id: number): boolean {
