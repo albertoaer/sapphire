@@ -142,14 +142,19 @@ export class WasmModule {
   }
 
   setBody(id: number, locals: WasmType[], code: number[] | Uint8Array) {
-    if (id < 0 || id >= this.functions.length)
-      throw new CompilerError('Wasm', 'Trying to set body to an invalid function');
     const obj = this.functions[id];
+    if (obj === undefined) throw new CompilerError('Wasm', 'Trying to set body to an invalid function');
     if (!('body' in obj)) throw new CompilerError('Wasm', 'Can not set body to non module function');
     if (obj.body !== null) throw new CompilerError('Wasm', 'Trying to set body twice to a function');
     obj.body = {
       locals,
       code: Array.isArray(code) ? new Uint8Array(code) : code
     }
+  }
+
+  isCompleted(id: number): boolean {
+    const obj = this.functions[id];
+    if (obj === undefined) throw new CompilerError('Wasm', 'Trying to ask for an invalid function');
+    return (!('body' in obj)) || obj.body !== null;
   }
 }
