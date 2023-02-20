@@ -13,7 +13,7 @@ export type Literal = {
   value: string
 }
 
-export type Expression = {
+export type Expression = ({
   readonly id: 'if',
   readonly cond: Expression,
   readonly then: Expression,
@@ -53,6 +53,8 @@ export type Expression = {
   readonly args: Expression[]
 } | {
   readonly id: 'none'
+}) & {
+  readonly type: Type;
 }
 
 export const ArraySizeAuto = 'auto';
@@ -81,7 +83,11 @@ export class Type {
     if (Array.isArray(this.base)) return `[${this.base.map(x => x.toString()).join(',')}]` + arr;
     return this.base.name + arr;
   }
+
+  isVoid = () => this.isEquals(Void);
 }
+
+export const Void = new Type('void');
 
 export type NativeReference = {
   resolution: 'find',
