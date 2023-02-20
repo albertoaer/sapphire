@@ -1,5 +1,6 @@
 import { CompilerError } from '../errors.ts';
 import { WasmType } from './module.ts';
+import * as encoding from './encoding.ts';
 
 export class WasmExpression {
   private readonly data: number[]
@@ -18,14 +19,33 @@ export class WasmExpression {
     return new Uint8Array(this.data);
   }
 
-  pushRaw(...bytes: number[]) {
+  pushRaw(...bytes: number[]): WasmExpression {
     this.data.push(...this.ensureBytes(bytes));
+    return this;
   }
 
-  pushIf(cond: WasmExpression, type: WasmType | null, branch: WasmExpression, elseBranch?: WasmExpression) {
+  pushIf(
+    cond: WasmExpression, type: WasmType | null, branch: WasmExpression, elseBranch?: WasmExpression
+  ): WasmExpression {
     if (elseBranch !== undefined)
       this.data.push(...cond.code, 0x04, type ?? 0x40, ...branch.code, 0x05, ...elseBranch.code, 0x0b);
     else
       this.data.push(...cond.code, 0x04, type ?? 0x40, ...branch.code, 0x0b);
+    return this;
+  }
+
+  pushNumber(num: number, kind: 'int' | 'uint' | 'float', bits: 32 | 64): WasmExpression {
+    switch (kind) {
+      case 'int':
+        this.data.push(...encoding.signedLEB128(num));
+        break;
+      case 'uint':
+        this.data.push(...encoding.unsignedLEB128(num));
+        break;
+      case 'float':
+        this.data.push(...encoding.ieee754(num, bits));
+        break;
+    }
+    return this;
   }
 }
