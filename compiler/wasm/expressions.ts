@@ -24,6 +24,11 @@ export class WasmExpression {
     return this;
   }
 
+  pushExpr(...expr: WasmExpression[]): WasmExpression {
+    this.data.push(...expr.flatMap(x => Array.from(x.code)));
+    return this;
+  }
+
   pushIf(
     cond: WasmExpression, type: WasmType | null, branch: WasmExpression, elseBranch?: WasmExpression
   ): WasmExpression {
