@@ -6,22 +6,20 @@ import { Generator } from './generator.ts'
 const generator = new Generator();
 
 const add: Func = {
-  fullInputSignature: [new Type('i32'), new Type('i32')],
   inputSignature: [new Type('i32'), new Type('i32')],
-  locals: [],
   outputSignature: new Type('i32'),
-  source: { resolution: 'find', id: 'i32sum' }
+  source: 0
 }
 
 const mult: Func = {
   ...add,
-  source: { resolution: 'find', id: 'i32mult' }
+  source: 1
 }
 
 const greater: Func = {
   ...add,
   outputSignature: new Type('bool'),
-  source: { resolution: 'find', id: 'i32greater' }
+  source: 2
 }
 
 generator.overwriteKernel({
