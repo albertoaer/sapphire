@@ -56,9 +56,9 @@ class Function implements sapp.Func {
 
   constructor(
     public readonly inputSignature: sapp.Type[],
-    public readonly fullInputSignature: sapp.Type[],
     private readonly meta: parser.ParserMeta,
-    private output?: sapp.Type
+    private output?: sapp.Type,
+    public readonly struct?: sapp.Type[]
   ) { }
 
   complete(source: sapp.Expression, locals: sapp.Type[]) {
@@ -87,7 +87,6 @@ class Function implements sapp.Func {
 
 export class FunctionGenerator implements FunctionResolutionEnv {
   public readonly inputs: sapp.Type[];
-  public readonly fullInputs: sapp.Type[];
   private readonly _expr: ExpressionGenerator;
   private readonly _func: Function;
   private readonly _prms: Parameters;
@@ -102,10 +101,9 @@ export class FunctionGenerator implements FunctionResolutionEnv {
   ) {
     const args = func.inputs.map(x => [x.name, env.resolveType(x.type)] as [string, sapp.Type]);
     this.inputs = args.map(x => x[1]);
-    this.fullInputs = struct ? [...struct, ...this.inputs] : this.inputs;
     this._prms = new Parameters(args);
     this._expr = new ExpressionGenerator(this, func.source);
-    this._func = new Function(this.inputs, this.fullInputs, func.meta, output);
+    this._func = new Function(this.inputs, func.meta, output, struct);
     this._treated = false;
   }
   
