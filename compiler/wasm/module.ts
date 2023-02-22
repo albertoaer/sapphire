@@ -1,5 +1,6 @@
 import { CompilerError } from '../errors.ts';
-import * as encoding from "./encoding.ts";
+import { encodeString, encodeVector, unsignedLEB128 } from "./encoding.ts";
+import { WasmExpression } from './expressions.ts';
 
 export const magicModuleHeader = [0x00, 0x61, 0x73, 0x6d];
 export const wasmVersion = [1, 0, 0, 0];
@@ -32,39 +33,75 @@ export enum WasmType {
   I64,
   F32,
   F64,
-  V128,
-  Funcref,
-  Externref
+  V128 = 0x7B,
+  Funcref = 0x70,
+  Externref = 0x6F
 }
 
-export type WasmFunction = {
-  body: {
+export type WasmDeclaredType = {
+  readonly input: WasmType[],
+  readonly output: WasmType[]
+}
+
+export class WasmFunction {
+  private _body: {
     code: Uint8Array,
     locals: WasmType[]
-  } | null,
-  input: WasmType[],
-  output: WasmType[]
+  } | null = null;
+
+  constructor(public readonly funcIdx: number, public readonly typeIdx: number) { }
+  
+  set body(data: { code: Uint8Array | WasmExpression, locals?: WasmType[] } | Uint8Array | WasmExpression) {
+    if (this._body) throw new CompilerError('Wasm', 'Trying to set body twice to a function');
+    if (data instanceof Uint8Array) this._body = { code: data, locals: [] };
+    else if (data instanceof WasmExpression) this._body = { code: data.code, locals: [] };
+    else this._body = {
+      code: data.code instanceof WasmExpression ? data.code.code : data.code, locals: data.locals ?? []
+    };
+  }
+
+  get body(): Exclude<WasmFunction['_body'], null> {
+    if (this._body) return this._body;
+    throw new CompilerError('Wasm', 'Undefined function code');
+  }
+
+  get completed(): boolean {
+    return !!this._body;
+  }
 }
 
 export type WasmImport = {
-  mod: string,
-  name: string,
-  input: WasmType[],
-  output: WasmType[]
+  readonly mod: string,
+  readonly name: string,
+  readonly typeIdx: number
 }
 
 export type WasmExport = {
-  id: number,
-  name: string
+  readonly funcIdx: number,
+  readonly name: string
+}
+
+export type WasmTable = {
+  readonly refType: WasmType.Funcref | WasmType.Externref,
+  readonly count: number
+}
+
+export type WasmElem = {
+  funcIdxVec: number[],
+  table: number,
 }
 
 function section(section: WasmSection, data: number[]): number[] {
-  return [section, ...(encoding.unsignedLEB128(data.length)), ...data];
+  return [section, ...(unsignedLEB128(data.length)), ...data];
 }
 
 export class WasmModule {
-  private readonly functions: (WasmFunction | WasmImport)[] = [];
-  private readonly exportedFunctions: WasmExport[] = [];
+  private readonly types: WasmDeclaredType[] = [];
+  private readonly functions: WasmFunction[] = [];
+  private readonly imports: WasmImport[] = [];
+  private readonly exports: WasmExport[] = [];
+  private readonly tables: WasmTable[] = [];
+  private readonly elems: WasmElem[] = [];
   private mainFunction: number | undefined;
   
   get code(): Uint8Array {
@@ -74,46 +111,69 @@ export class WasmModule {
       ...this.getTypes(),
       ...this.getImports(),
       ...this.getFunctions(),
+      ...this.getTables(),
       ...this.getExports(),
       ...this.getStart(),
+      ...this.getElems(),
       ...this.getFunctionsCode()
     ]);
   }
 
   private getTypes(): number[] {
-    if (!this.functions.length) return [];
-    return section(WasmSection.Type, encoding.encodeVector(this.functions.map(
-      x => [0x60, encoding.encodeVector(x.input), encoding.encodeVector(x.output)]
+    if (!this.functions) return [];
+    return section(WasmSection.Type, encodeVector(this.types.map(
+      x => [0x60, encodeVector(x.input), encodeVector(x.output)]
     )));
   }
 
+  private generateType(tp: WasmDeclaredType): number {
+    const idx = this.types.findIndex(
+      x =>
+      x.input.length === tp.input.length && x.input.every((v, i) => v === tp.input[i]) &&
+      x.output.length === tp.output.length && x.output.every((v, i) => v === tp.output[i])
+    );
+    return idx >= 0 ? idx : this.types.push(tp) - 1;
+  }
+
   private getImports(): number[] {
-    const imports = this.functions.map((x, idx) => 'mod' in x ? { ...x, idx } : null).filter(x => x !== null);
-    if (imports.length === 0) return [];
-    return section(WasmSection.Import, encoding.encodeVector(imports.map(
-      x => [...encoding.encodeString(x!.mod), ...encoding.encodeString(x!.name), WasmExportIndex.Function, x!.idx]
+    if (!this.imports) return [];
+    return section(WasmSection.Import, encodeVector(this.imports.map(
+      x => [...encodeString(x.mod), ...encodeString(x.name), WasmExportIndex.Function, x.typeIdx]
     )));
   }
 
   private getFunctions(): number[] {
-    const functions = this.functions.map((x, idx) => 'body' in x ? idx : null).filter(x => x !== null);
-    if (functions.length === 0) return [];
-    return section(WasmSection.Function, encoding.encodeVector(functions.map(x => encoding.unsignedLEB128(x!))));
+    if (!this.functions) return [];
+    return section(WasmSection.Function,
+      encodeVector(this.functions.map(x => unsignedLEB128(x.typeIdx)))
+    );
   }
-  
-  private getFunctionsCode(): number[] {
-    const functions: WasmFunction[] = this.functions.filter(x => 'body' in x) as WasmFunction[];
-    if (!functions.length) return [];
-    return section(WasmSection.Code, encoding.encodeVector(functions.map(x => {
-      if (x.body === null) throw new CompilerError('Wasm', 'Undefined function code');
-      return encoding.encodeVector([...encoding.encodeVector(x.body.locals), ...x.body.code, 0x0b]);
+
+  private getTables(): number[] {
+    if (!this.tables) return [];
+    return section(WasmSection.Table, encodeVector(this.tables.map(x => {
+      return [x.refType, 0, x.count]
     })));
   }
   
+  private getFunctionsCode(): number[] {
+    if (!this.functions) return [];
+    return section(WasmSection.Code, encodeVector(this.functions.map(
+      x => encodeVector([...encodeVector(x.body.locals), ...x.body.code, 0x0b])
+    )));
+  }
+
+  private getElems(): number[] {
+    if (!this.elems) return [];
+    return section(WasmSection.Element, encodeVector(this.elems.map(
+      x => [2, ...unsignedLEB128(x.table), 0x41, 0, 0x0b, 0x00, ...encodeVector(x.funcIdxVec)]
+    )));
+  }
+  
   private getExports(): number[] {
-    if (!this.exportedFunctions.length) return [];
-    return section(WasmSection.Export, encoding.encodeVector(this.exportedFunctions.map(
-      x => [...encoding.encodeString(x.name), WasmExportIndex.Function, ...encoding.signedLEB128(x.id)]
+    if (!this.exports) return [];
+    return section(WasmSection.Export, encodeVector(this.exports.map(
+      x => [...encodeString(x.name), WasmExportIndex.Function, ...unsignedLEB128(x.funcIdx)]
     )));
   }
 
@@ -123,35 +183,32 @@ export class WasmModule {
   }
 
   import(mod: string, name: string, input: WasmType[], output: WasmType[]): number {
-    const id = this.functions.length;
-    this.functions.push({ mod, name, input, output });
-    return id;
+    const typeIdx = this.generateType({ input, output });
+    this.imports.push({ mod, name, typeIdx });
+    return typeIdx;
   }
 
-  define(input: WasmType[], output: WasmType[], options?: { main?: boolean, export?: string }): number {
-    const id = this.functions.length;
-    this.functions.push({ body: null, input, output });
+  define(
+    input: WasmType[], output: WasmType[], options?: { main?: boolean, export?: string }
+  ): WasmFunction {
+    const typeIdx = this.generateType({ input, output });
+    const funcIdx = this.functions.length;
+    const func: WasmFunction = new WasmFunction(funcIdx, typeIdx);
+    this.functions.push(func);
     if (options) {
       if (options.main) {
-        if (this.mainFunction === undefined) this.mainFunction = id;
+        if (this.mainFunction === undefined) this.mainFunction = typeIdx;
         else throw new CompilerError('Wasm', 'There is already a main function');
       }
-      if (options.export) this.exportedFunctions.push({ id, name: options.export });
+      if (options.export) this.exports.push({ funcIdx, name: options.export });
     }
-    return id;
+    return func;
   }
 
-  setBody(id: number, locals: WasmType[], code: number[] | Uint8Array) {
-    const obj = this.functions[id];
-    if (obj === undefined) throw new CompilerError('Wasm', 'Trying to set body to an invalid function');
-    if (!('body' in obj)) throw new CompilerError('Wasm', 'Can not set body to non module function');
-    if (obj.body !== null) throw new CompilerError('Wasm', 'Trying to set body twice to a function');
-    obj.body = { locals, code: Array.isArray(code) ? new Uint8Array(code) : code };
-  }
-
-  isCompleted(id: number): boolean {
-    const obj = this.functions[id];
-    if (obj === undefined) throw new CompilerError('Wasm', 'Trying to ask for an invalid function');
-    return (!('body' in obj)) || obj.body !== null;
+  table(functions: number[]): number {
+    const table = this.tables.length;
+    this.tables.push({ count: functions.length, refType: WasmType.Funcref });
+    this.elems.push({ funcIdxVec: functions, table });
+    return table;
   }
 }

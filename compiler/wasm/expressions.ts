@@ -1,6 +1,6 @@
 import { CompilerError } from '../errors.ts';
 import { WasmType } from './module.ts';
-import * as encoding from './encoding.ts';
+import { signedLEB128, unsignedLEB128, ieee754 } from './encoding.ts';
 
 export class WasmExpression {
   private readonly data: number[]
@@ -42,13 +42,13 @@ export class WasmExpression {
   pushNumber(num: number, kind: 'int' | 'uint' | 'float', bits: 32 | 64): WasmExpression {
     switch (kind) {
       case 'int':
-        this.data.push(...encoding.signedLEB128(num));
+        this.data.push(...signedLEB128(num));
         break;
       case 'uint':
-        this.data.push(...encoding.unsignedLEB128(num));
+        this.data.push(...unsignedLEB128(num));
         break;
       case 'float':
-        this.data.push(...encoding.ieee754(num, bits));
+        this.data.push(...ieee754(num, bits));
         break;
     }
     return this;
