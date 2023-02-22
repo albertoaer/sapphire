@@ -84,25 +84,20 @@ export class Type {
     return this.base.name + arr;
   }
 
-  isVoid = () => this.isEquals(Void);
+  get isVoid(): boolean { return this.isEquals(Void); }
 }
 
 export const Void = new Type('void');
 
-export type NativeReference = {
-  resolution: 'find',
-  id: string
-} | {
-  resolution: 'apply',
-  action: () => void
-}
+// References are treated by the compiler
+export type FunctionReference = number
 
 export interface Func {
   readonly inputSignature: Type[], // Parameter types
-  readonly fullInputSignature: Type[], // Struct types + Parameter types
+  readonly struct?: Type[], // Struct types
   readonly outputSignature: Type, // Return type
-  readonly locals: Type[], // Defined locals with their type
-  readonly source: Expression | NativeReference // Body
+  readonly locals?: Type[], // Defined locals with their type
+  readonly source: Expression | FunctionReference // Body
 }
 
 export interface Def {
