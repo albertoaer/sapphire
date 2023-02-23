@@ -35,7 +35,7 @@ export type Expression = ({
   readonly id: 'literal',
   readonly value: Literal
 } | {
-  readonly id: 'group',
+  readonly id: 'group' | 'tuple_literal' | 'list_literal',
   readonly exprs: Expression[]
 } | {
   readonly id: 'index',
@@ -88,6 +88,12 @@ export class Type {
 }
 
 export const Void = new Type('void');
+export const String = new Type('string');
+export const Bool = new Type('bool');
+export const I32 = new Type('i32');
+export const I64 = new Type('i64');
+export const F32 = new Type('f32');
+export const F64 = new Type('f64');
 
 // References are treated by the compiler
 export type FunctionReference = number

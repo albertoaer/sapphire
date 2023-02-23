@@ -100,10 +100,16 @@ export class Parser {
   parseExpressionTerm(): Expression {
     if (this.tokens.nextIs({ value: 'if' })) return this.parseIf();
     if (this.tokens.nextIs({ value: '.' })) return { id: 'none', meta: { line: this.tokens.line } };
-    const g = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
-    if (g !== undefined) {
-      if (g.length === 1) return g[0];
-      return { id: 'group', exprs: g, meta: { line: this.tokens.line } };
+
+    const tuple = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
+    if (tuple !== undefined) return { id: 'tuple_literal', exprs: tuple, meta: { line: this.tokens.line } };
+    const list = this.tryParseExpressionGroup({ value: '{' }, { value: '}' });
+    if (list !== undefined) return { id: 'list_literal', exprs: list, meta: { line: this.tokens.line } };
+
+    const group = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
+    if (group !== undefined) {
+      if (group.length === 1) return group[0];
+      return { id: 'group', exprs: group, meta: { line: this.tokens.line } };
     }
     const l = this.tryParseLiteral();
     if (l !== undefined) return { id: 'literal', value: l, meta: { line: this.tokens.line } };

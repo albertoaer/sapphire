@@ -38,6 +38,20 @@ export class ExpressionGenerator {
     if (!else_.type.isEquals(then_.type)) throw new MatchTypeError(ex.meta.line, else_.type, else_.type);
     return { id: 'if', cond: cond_, else: else_, then: then_, type: then_.type };
   }
+
+  private processTuple({ exprs, meta }: parser.Expression & { id: 'tuple_literal' }): sapp.Expression {
+    const items = exprs.map(x => this.processEx(x));
+    if (items.length === 0) throw new ParserError(meta.line, 'Tuple with 0 elements is invalid');
+    return { id: 'tuple_literal', exprs: items, type: new sapp.Type(items.map(x => x.type)) };
+  }
+  
+  private processList({ exprs, meta }: parser.Expression & { id: 'list_literal' }): sapp.Expression {
+    const items = exprs.map(x => this.processEx(x));
+    if (!items.every((x, i) => i === 0 || x.type.isEquals(items[i-1].type)))
+      throw new ParserError(meta.line, 'Every element in a list must have the same type');
+    if (items.length === 0) throw new ParserError(meta.line, 'Empty list\' type can not be inferred');
+    return { id: 'list_literal', exprs: items, type: items[0].type };
+  }
   
   private processIndex(ex: parser.Expression & { id: 'index' }): sapp.Expression {
     throw new FeatureError(ex.meta.line, 'Indexation');
@@ -67,6 +81,8 @@ export class ExpressionGenerator {
       case 'get': throw new FeatureError(ex.meta.line, 'Attribute Access');
       case 'group': return this.processGroup(ex);
       case 'if': return this.processIf(ex);
+      case 'tuple_literal': return this.processTuple(ex);
+      case 'list_literal': return this.processList(ex);
       case 'index': return this.processIndex(ex);
       case 'literal': return this.processLiteral(ex);
       case 'value': return this.processValue(ex);

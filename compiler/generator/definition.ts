@@ -87,7 +87,9 @@ export class DefinitionGenerator implements ResolutionEnv {
   
   private includeFunction(pre: parser.Func, func: FunctionGenerator) {
     if (this.functions[pre.name] === undefined) this.functions[pre.name] = [];
-    if (this.functions[pre.name].find(x => x.inputs.every((t, i) => t.isEquals(func.inputs[i]))))
+    if (this.functions[pre.name].find(
+      x => x.inputs.length === func.inputs.length && x.inputs.every((t, i) => t.isEquals(func.inputs[i]))
+    ))
       throw new ParserError(pre.meta.line, 'Repeated function signature');
     this.functions[pre.name].push(func);
   }

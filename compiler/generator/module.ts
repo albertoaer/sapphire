@@ -16,14 +16,14 @@ export class ModuleGenerator implements ResolutionEnv {
 
   resolveType(raw: parser.Type): sapp.Type {
     const array = raw.array ? (raw.array.size !== undefined ? raw.array.size : sapp.ArraySizeAuto) : undefined;
-    if (raw.base === 'void') return new sapp.Type(raw.base, { array });
     if ('type' in raw.base) {
-      const native: sapp.NativeType = {
-        'string': 'string', 'bool': 'bool', 'int': 'i32', 'float': 'f32'
-      }[raw.base.type] as sapp.NativeType;
-      return new sapp.Type(native, { array });
+      const base = {
+        'string': sapp.String, 'bool': sapp.Bool, 'int': sapp.I32, 'float': sapp.F32
+      }[raw.base.type].base;
+      return new sapp.Type(base, { array });
     }
     if (Array.isArray(raw.base)) return new sapp.Type(raw.base.map(this.resolveType.bind(this)), { array });
+    if (raw.base.route.length === 1 && raw.base.route[0] === 'void') return sapp.Void;
     if (this.defs[raw.base.route[0]]) {
       if (raw.base.route.length > 1)
         throw new ParserError(raw.base.meta.line, 'Functions as types are not supported');
