@@ -1,7 +1,7 @@
 import * as sapp from '../sapp.ts';
 import * as wasm from '../wasm/module.ts';
 export * as sapp from '../sapp.ts';
-export * as wasm from '../wasm/module.ts';
+export * as wasm from '../wasm/mod.ts';
 export * as parser from '../parser/parser.ts';
 import { CompilerError } from '../errors.ts';
 
