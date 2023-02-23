@@ -15,14 +15,18 @@ Deno.test('sample module', async () => {
 
 Deno.test('tables', async () => {
   const module = new WasmModule();
+  const c = module.import('operations', 'val', [], [WasmType.I32]);
   const a = module.define([], [WasmType.I32]);
   a.body = new WasmExpression(0x41, 20);
   const b = module.define([], [WasmType.I32]);
   b.body = new WasmExpression(0x41, 30);
-  const t = module.table([a.funcIdx, b.funcIdx]);
+  const t = module.table([a.funcIdx, b.funcIdx, c]);
   module.define([WasmType.I32], [WasmType.I32], { export: 'run' })
-    .body = new WasmExpression(0x20, 0, 0x11, t, a.typeIdx);
-  const { instance } = await WebAssembly.instantiate(module.code);
+    .body = new WasmExpression(0x20, 0, 0x11, a.typeIdx, t);
+  const { instance } = await WebAssembly.instantiate(module.code, {
+    operations: { val: () => 50 }
+  });
   assertEquals((instance.exports.run as CallableFunction)(0), 20);
   assertEquals((instance.exports.run as CallableFunction)(1), 30);
+  assertEquals((instance.exports.run as CallableFunction)(2), 50);
 });

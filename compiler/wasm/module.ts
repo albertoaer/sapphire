@@ -103,6 +103,7 @@ export class WasmModule {
   private readonly tables: WasmTable[] = [];
   private readonly elems: WasmElem[] = [];
   private mainFunction: number | undefined;
+  private lockedImports = false;
   
   get code(): Uint8Array {
     return Uint8Array.from([
@@ -183,6 +184,7 @@ export class WasmModule {
   }
 
   import(mod: string, name: string, input: WasmType[], output: WasmType[]): number {
+    if (this.lockedImports) throw new CompilerError('Wasm', 'Imports are locked after definitions');
     const typeIdx = this.generateType({ input, output });
     this.imports.push({ mod, name, typeIdx });
     return typeIdx;
@@ -192,16 +194,17 @@ export class WasmModule {
     input: WasmType[], output: WasmType[], options?: { main?: boolean, export?: string }
   ): WasmFunction {
     const typeIdx = this.generateType({ input, output });
-    const funcIdx = this.functions.length;
+    const funcIdx = this.imports.length + this.functions.length;
     const func: WasmFunction = new WasmFunction(funcIdx, typeIdx);
     this.functions.push(func);
     if (options) {
       if (options.main) {
-        if (this.mainFunction === undefined) this.mainFunction = typeIdx;
+        if (this.mainFunction === undefined) this.mainFunction = funcIdx;
         else throw new CompilerError('Wasm', 'There is already a main function');
       }
       if (options.export) this.exports.push({ funcIdx, name: options.export });
     }
+    this.lockedImports = true;
     return func;
   }
 
