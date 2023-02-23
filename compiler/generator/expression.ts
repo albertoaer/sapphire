@@ -50,7 +50,7 @@ export class ExpressionGenerator {
     if (!items.every((x, i) => i === 0 || x.type.isEquals(items[i-1].type)))
       throw new ParserError(meta.line, 'Every element in a list must have the same type');
     if (items.length === 0) throw new ParserError(meta.line, 'Empty list\' type can not be inferred');
-    return { id: 'list_literal', exprs: items, type: items[0].type };
+    return { id: 'list_literal', exprs: items, type: new sapp.Type(items[0].type, 'auto') };
   }
   
   private processIndex(ex: parser.Expression & { id: 'index' }): sapp.Expression {

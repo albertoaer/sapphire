@@ -97,14 +97,22 @@ export class Parser {
     return { id: 'assign', name: route, meta: { line: this.tokens.line }, value: this.parseExpression() };
   }
 
+  parseListOrTuple(): Expression | undefined {
+    const tuple = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
+    if (tuple !== undefined) return { id: 'tuple_literal', exprs: tuple, meta: { line: this.tokens.line } };
+
+    const list = this.tryParseExpressionGroup({ value: '{' }, { value: '}' });
+    if (list !== undefined) {
+      return { id: 'list_literal', exprs: list, meta: { line: this.tokens.line } };
+    }
+  }
+
   parseExpressionTerm(): Expression {
     if (this.tokens.nextIs({ value: 'if' })) return this.parseIf();
     if (this.tokens.nextIs({ value: '.' })) return { id: 'none', meta: { line: this.tokens.line } };
 
-    const tuple = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
-    if (tuple !== undefined) return { id: 'tuple_literal', exprs: tuple, meta: { line: this.tokens.line } };
-    const list = this.tryParseExpressionGroup({ value: '{' }, { value: '}' });
-    if (list !== undefined) return { id: 'list_literal', exprs: list, meta: { line: this.tokens.line } };
+    const listOrTuple = this.parseListOrTuple();
+    if (listOrTuple) return listOrTuple;
 
     const group = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
     if (group !== undefined) {

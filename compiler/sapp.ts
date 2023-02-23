@@ -60,27 +60,41 @@ export type Expression = ({
 export const ArraySizeAuto = 'auto';
 
 export class Type {
-  constructor(
-    readonly base: Def | Type[] | NativeType | 'void',
-    readonly attrs?: { literal?: string, array?: number | typeof ArraySizeAuto }
-  ) {}
+  readonly base: Def | Type | Type[] | NativeType | 'void' | `literal:`;
+  readonly array?: number | typeof ArraySizeAuto;
+
+  constructor(base: Type['base'], array?: Type['array']) {
+    if (array) {
+      this.base = base instanceof Type && !base.array ? base.base : base;
+      this.array = array;
+    } else if (base instanceof Type) {
+      this.base = base.base;
+      this.array = base.array;
+    } else this.base = base;
+  }
 
   isEquals(tp: Type): boolean {
-    if (this.attrs?.array !== tp.attrs?.array || this.attrs?.literal !== tp.attrs?.literal) return false;
+    if (this.array !== tp.array) return false;
     if (typeof this.base === 'string' || typeof tp.base === 'string') return this.base === tp.base;
     if ('route' in this.base) {
       if (!('route' in tp.base)) return false;
       return this.base.route === tp.base.route && tp.base.name === tp.base.name;
     }
     if ('route' in tp.base) return false;
-    const base: Type[] = tp.base;
-    return this.base.every((x, i) => x.isEquals(base[i]));
+    if (Array.isArray(this.base)) {
+      if (!(Array.isArray(tp.base))) return false;
+      const base = tp.base;
+      return this.base.every((x, i) => x.isEquals(base[i]));
+    }
+    if (Array.isArray(tp.base)) return false;
+    return this.base.isEquals(tp.base);
   }
 
   toString(): string {
-    const arr = this.attrs?.array !== undefined ? `{${this.attrs.array.toString().replace(ArraySizeAuto, '')}}` : '';
+    const arr = this.array !== undefined ? `{${this.array.toString().replace(ArraySizeAuto, '')}}` : '';
     if (typeof this.base === 'string') return this.base + arr;
     if (Array.isArray(this.base)) return `[${this.base.map(x => x.toString()).join(',')}]` + arr;
+    if (this.base instanceof Type) return this.base.toString() + arr;
     return this.base.name + arr;
   }
 

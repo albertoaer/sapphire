@@ -20,20 +20,20 @@ export class ModuleGenerator implements ResolutionEnv {
       const base = {
         'string': sapp.String, 'bool': sapp.Bool, 'int': sapp.I32, 'float': sapp.F32
       }[raw.base.type].base;
-      return new sapp.Type(base, { array });
+      return new sapp.Type(base, array);
     }
-    if (Array.isArray(raw.base)) return new sapp.Type(raw.base.map(this.resolveType.bind(this)), { array });
+    if (Array.isArray(raw.base)) return new sapp.Type(raw.base.map(this.resolveType.bind(this)), array);
     if (raw.base.route.length === 1 && raw.base.route[0] === 'void') return sapp.Void;
     if (this.defs[raw.base.route[0]]) {
       if (raw.base.route.length > 1)
         throw new ParserError(raw.base.meta.line, 'Functions as types are not supported');
-      return new sapp.Type(this.defs[raw.base.route[0]].generate(), { array });
+      return new sapp.Type(this.defs[raw.base.route[0]].generate(), array);
     }
     const rootval = raw.base.route[0];
     if (sapp.isNativeType(rootval)) {
       if (raw.base.route.length > 1)
         throw new ParserError(raw.base.meta.line, `${rootval} is a native type with no functions`);
-      return new sapp.Type(rootval, { array });
+      return new sapp.Type(rootval, array);
     }
     const root = this.globals.get(rootval);
     if (!root) throw new ParserError(raw.base.meta.line, `Not found: ${rootval}`);
@@ -41,10 +41,10 @@ export class ModuleGenerator implements ResolutionEnv {
       if (raw.base.route.length === 1) throw new ParserError(raw.base.meta.line, 'Module cannot be used as type');
       const def = root.defs[raw.base.route[1]];
       if (raw.base.route.length > 2) throw new ParserError(raw.base.meta.line, 'Function as types are not supported');
-      return new sapp.Type(def, { array });
+      return new sapp.Type(def, array);
     } else if ('name' in root) {
       if (raw.base.route.length > 1) throw new ParserError(raw.base.meta.line, 'Function as types are not supported');
-      return new sapp.Type(root, { array });
+      return new sapp.Type(root, array);
     }
     throw new ParserError(raw.base.meta.line, `Cannot be used as type: ${rootval}`);
   }

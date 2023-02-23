@@ -77,8 +77,8 @@ Deno.test('must generate, expression targeted', () => {
       z ** 2
     end`,
     `def Test
-        ([i32, i64] a): void Test(a);
-        () {3, 10} ;
+        ([i32, i64] a): [i32, i64] Test(a), a;
+        (): i32{} {3, 10};
     end`
     ];
     codes.forEach(genTest);
