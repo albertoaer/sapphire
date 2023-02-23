@@ -19,7 +19,7 @@ export class FileSystemModuleProvider implements ModuleProvider {
   
   getModule(descriptor: ModuleDescriptor, generator: Generator): Module {
     const route = this.assertFileRoute(descriptor);
-    const source = Deno.readFileSync(route);
+    const source = new TextDecoder().decode(Deno.readFileSync(route));
     return generator.generateModule(`file:${route}`, source.toString());
   }
 }
