@@ -208,6 +208,10 @@ export class WasmModule {
     return func;
   }
 
+  export(name: string, funcIdx: number) {
+    this.exports.push({ name, funcIdx });
+  }
+
   table(functions: number[]): number {
     const table = this.tables.length;
     this.tables.push({ count: functions.length, refType: WasmType.Funcref });
