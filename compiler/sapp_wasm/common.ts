@@ -6,7 +6,7 @@ export * as parser from '../parser/parser.ts';
 import { CompilerError } from '../errors.ts';
 
 export function convertToWasmType(orig: sapp.Type): wasm.WasmType {
-  if (orig.attrs?.array !== undefined) return wasm.WasmType.I32;
+  if (orig.array !== undefined) return wasm.WasmType.I32;
   switch (orig.base) {
     case 'string': return wasm.WasmType.I32;
     case 'bool': return wasm.WasmType.I32;
@@ -17,4 +17,15 @@ export function convertToWasmType(orig: sapp.Type): wasm.WasmType {
     case 'void': throw new CompilerError('Wasm', 'Trying to represent void');
   }
   throw new CompilerError('Wasm', `Type not handled ${orig.toString()}`)
+}
+
+export type ResolvedFunction = number | RawCodeSpec
+
+export type RawCodeSpec = {
+  reverseStack: boolean,
+  instruction: Uint8Array
+}
+
+export interface FunctionInjector {
+  get(ref: sapp.FunctionReference): ResolvedFunction | undefined;
 }
