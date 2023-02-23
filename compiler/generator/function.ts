@@ -65,7 +65,9 @@ class Function implements sapp.Func {
     this._source = source;
     this._locals = locals;
     if (this.output !== undefined && !this.output.isEquals(source.type))
-        throw new ParserError(this.meta.line, 'Return type does not match expected return');
+      throw new ParserError(
+        this.meta.line, `Return type does not match expected return, ${this.output} != ${source.type}`
+      );
     this.output = source.type;
   }
 

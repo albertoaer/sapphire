@@ -12,7 +12,7 @@ export type Literal = {
 }
 
 export type Type = {
-  readonly base: ParserRoute | Literal | Type[] | 'void',
+  readonly base: ParserRoute | Literal | Type[],
   readonly array?: { size?: number },
   readonly meta: ParserMeta
 }
@@ -62,6 +62,12 @@ export type Expression = ({
   readonly id: 'group',
   readonly exprs: Expression[]
 } | {
+  readonly id: 'tuple_literal',
+  readonly exprs: Expression[]
+} | {
+  readonly id: 'list_literal',
+  readonly exprs: Expression[]
+} | {
   readonly id: 'index',
   readonly origin: Expression,
   readonly args: Expression[]
@@ -96,5 +102,6 @@ export type Def = {
   name: string,
   structs: Struct[],
   functions: Func[],
-  meta: ParserMeta
+  meta: ParserMeta,
+  doExport: boolean
 }

@@ -97,13 +97,27 @@ export class Parser {
     return { id: 'assign', name: route, meta: { line: this.tokens.line }, value: this.parseExpression() };
   }
 
+  parseListOrTuple(): Expression | undefined {
+    const tuple = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
+    if (tuple !== undefined) return { id: 'tuple_literal', exprs: tuple, meta: { line: this.tokens.line } };
+
+    const list = this.tryParseExpressionGroup({ value: '{' }, { value: '}' });
+    if (list !== undefined) {
+      return { id: 'list_literal', exprs: list, meta: { line: this.tokens.line } };
+    }
+  }
+
   parseExpressionTerm(): Expression {
     if (this.tokens.nextIs({ value: 'if' })) return this.parseIf();
     if (this.tokens.nextIs({ value: '.' })) return { id: 'none', meta: { line: this.tokens.line } };
-    const g = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
-    if (g !== undefined) {
-      if (g.length === 1) return g[0];
-      return { id: 'group', exprs: g, meta: { line: this.tokens.line } };
+
+    const listOrTuple = this.parseListOrTuple();
+    if (listOrTuple) return listOrTuple;
+
+    const group = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
+    if (group !== undefined) {
+      if (group.length === 1) return group[0];
+      return { id: 'group', exprs: group, meta: { line: this.tokens.line } };
     }
     const l = this.tryParseLiteral();
     if (l !== undefined) return { id: 'literal', value: l, meta: { line: this.tokens.line } };
@@ -238,7 +252,7 @@ export class Parser {
       this.dependencies.push({ route: route, meta: { line }, mode: 'named', name: route.at(-1) as string});
   }
 
-  parseDef() {
+  parseDef(doExport = false) {
     const line = this.tokens.line;
     const opname = this.tokens.nextIs({ type: 'operator' })?.value;
     const name = opname ? opname : this.tokens.expectNext({ type: 'identifier' }).value;
@@ -257,13 +271,16 @@ export class Parser {
       else this.tokens.unexpect();
       while (this.tokens.nextIs({ value: ';' }));
     }
-    this.definitions.push({ name, structs, functions, meta: { line } });
+    this.definitions.push({ name, structs, functions, meta: { line }, doExport });
   }
 
   parse() {
     while (!this.tokens.empty) {
       if (this.tokens.nextIs({ value: 'use' })) this.parseUse();
-      else if (this.tokens.nextIs({ value: 'def' })) this.parseDef();
+      else if (this.tokens.nextIs({ value: 'export' })) {
+        this.tokens.expectNext({ value: 'def' });
+        this.parseDef(true);
+      } else if (this.tokens.nextIs({ value: 'def' })) this.parseDef();
       else this.tokens.unexpect();
     }
   }
