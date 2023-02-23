@@ -1,4 +1,4 @@
-import { FeatureError } from '../errors.ts';
+import { CompilerError, FeatureError } from '../errors.ts';
 import { sapp, wasm, convertToWasmType } from './common.ts';
 import type { FunctionResolutor } from './functions.ts';
 
@@ -14,11 +14,16 @@ export class ExpressionCompiler {
   }
 
   private processCall({ args, func }: sapp.Expression & { id: 'call' }) {
-    for (const arg of args) this.expression.pushExpr(this.fastProcess(arg));
     const resolved = this.resolutor.useFunc(func);
-    if (typeof resolved !== 'number') throw new FeatureError(null, 'Native Functions');
-    this.expression.pushRaw(0x10);
-    this.expression.pushNumber(resolved, 'uint', 32);
+    if (typeof resolved !== 'number') {
+      const argsTransformed = resolved.reverseStack ? args.reverse() : args;
+      for (const arg of argsTransformed) this.expression.pushExpr(this.fastProcess(arg));
+      this.expression.pushRaw(...resolved.instruction);
+    } else {
+      for (const arg of args) this.expression.pushExpr(this.fastProcess(arg));
+      this.expression.pushRaw(0x10);
+      this.expression.pushNumber(resolved, 'uint', 32);
+    }
   }
 
   private processIf(ex: sapp.Expression & { id: 'if' }) {
@@ -60,6 +65,10 @@ export class ExpressionCompiler {
     this.submit(exs[exs.length-1]);
   }
 
+  private paramGet(name: number) {
+    this.expression.pushRaw(0x20, name);
+  }
+
   submit(ex: sapp.Expression) {
     switch (ex.id) {
       case 'call': 
@@ -74,8 +83,13 @@ export class ExpressionCompiler {
       case 'group':
         this.processStack(ex.exprs);
         break;
+      case 'param_get':
+        this.paramGet(ex.name);
+        break;
       case 'none':
         break;
+      default:
+        throw new CompilerError('Wasm', `Expression compilation not provided for ${ex.id}`);
     }
   }
 }
