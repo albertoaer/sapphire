@@ -1,8 +1,6 @@
-import { sapp, wasm, convertToWasmType } from "./common.ts";
-import { CompilerError, FeatureError } from "../errors.ts";
+import { sapp, wasm, convertToWasmType, ResolvedFunction, FunctionInjector } from "./common.ts";
+import { CompilerError } from "../errors.ts";
 import { WasmType } from "../wasm/module.ts";
-
-export type ResolvedFunction = number | Uint8Array
 
 export interface FunctionResolutor {
   useFunc(func: sapp.Func): ResolvedFunction;
@@ -15,14 +13,18 @@ export class FunctionManager implements FunctionResolutor {
   private readonly functions: Map<sapp.Func, wasm.WasmFunction> = new Map();
   private readonly instanceFunctions: Map<sapp.Func[], number> = new Map();
   
-  constructor(private readonly module: wasm.WasmModule) { }
+  constructor(private readonly module: wasm.WasmModule, private readonly injector: FunctionInjector) { }
 
   useFunc(func: sapp.Func): ResolvedFunction {
-    if (typeof func.source === 'number') throw new FeatureError(null, 'Native Functions');
+    if (typeof func.source === 'number') {
+      const injected = this.injector.get(func.source);
+      if (injected === undefined) throw new CompilerError('Wasm', 'Unknown reference function code: ' + func.source);
+      return injected;
+    }
     if (!this.functions.has(func)) {
       this.functions.set(func, this.module.define(
         [...(func.struct ? [WasmType.I32] : []), ...func.inputSignature.map(convertToWasmType)],
-        func.outputSignature.base === 'void' ? [] : [convertToWasmType(func.outputSignature)]
+        func.outputSignature.isVoid ? [] : [convertToWasmType(func.outputSignature)]
       ));
       this.defined.push(func);
     }
@@ -51,11 +53,15 @@ export class FunctionManager implements FunctionResolutor {
     Object.values(def.instanceFuncs).forEach(f => f.forEach(f => this.useFuncTable(f)));
   }
 
+  getFunc(func: sapp.Func): wasm.WasmFunction | undefined {
+    return this.functions.get(func);
+  }
+
   [Symbol.iterator](): Iterator<sapp.Func> {
     let i = 0;
     return {
       next: (): { done: boolean, value: sapp.Func } => {
-        while (this.functions.get(this.defined[i])!.completed) i++;
+        while (this.defined[i] !== undefined && this.functions.get(this.defined[i])!.completed) i++;
         return { done: i >= this.defined.length, value: this.defined[i++] }
       }
     }
