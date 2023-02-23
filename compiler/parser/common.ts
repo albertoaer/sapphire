@@ -102,5 +102,6 @@ export type Def = {
   name: string,
   structs: Struct[],
   functions: Func[],
-  meta: ParserMeta
+  meta: ParserMeta,
+  doExport: boolean
 }

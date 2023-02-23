@@ -46,9 +46,13 @@ export class DefinitionGenerator implements ResolutionEnv {
 
   private generated: sapp.Def | undefined = undefined;
 
+  public readonly exported: boolean;
+
   constructor(
     public readonly route: sapp.ModuleRoute, private readonly env: ResolutionEnv, private readonly def: parser.Def
-  ) { }
+  ) {
+    this.exported = def.doExport;
+  }
 
   resolveType(raw: parser.Type): sapp.Type {
     return this.env.resolveType(raw);

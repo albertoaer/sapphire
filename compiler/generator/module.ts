@@ -78,7 +78,8 @@ export class ModuleGenerator implements ResolutionEnv {
     if (this.processed === undefined)
       this.processed = {
         route: this.route,
-        defs: Object.fromEntries(Object.entries(this.defs).map(([n, d]) => [n, d.generate()]))
+        defs: Object.fromEntries(Object.entries(this.defs).map(([n, d]) => [n, d.generate()])),
+        exports: Object.values(this.defs).filter(x => x.exported).map(x => x.generate())
       };
     return this.processed;
   }

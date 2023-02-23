@@ -134,4 +134,5 @@ export type GlobalObject = Module | Def
 export interface Module {
   readonly route: ModuleRoute;
   readonly defs: { [name in string]: Def };
+  readonly exports: Def[];
 }
