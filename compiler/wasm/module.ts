@@ -30,9 +30,9 @@ export enum WasmExportIndex {
 
 export enum WasmType {
   I32 = 0x7F,
-  I64,
-  F32,
-  F64,
+  I64 = 0x7E,
+  F32 = 0x7D,
+  F64 = 0x7C,
   V128 = 0x7B,
   Funcref = 0x70,
   Externref = 0x6F
