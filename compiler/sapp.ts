@@ -61,7 +61,7 @@ export type Expression = ({
 export const ArraySizeAuto = 'auto';
 
 export class Type {
-  readonly base: DefHeader | Type | Type[] | NativeType | 'void' | `literal:${string}`;
+  readonly base: DefHeader | Type | Type[] | NativeType | 'void' | `literal:${string}` | 'any';
   readonly array?: number | typeof ArraySizeAuto;
 
   constructor(base: Type['base'], array?: Type['array']) {
@@ -75,6 +75,7 @@ export class Type {
   }
 
   isEquals(tp: Type): boolean {
+    if (this.base === 'any' || tp.base === 'any') return true;
     if (this.array !== tp.array) return false;
     if (typeof this.base === 'string' || typeof tp.base === 'string') return this.base === tp.base;
     if ('route' in this.base) {
