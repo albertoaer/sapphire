@@ -46,7 +46,8 @@ generator.overwriteKernel({
       funcs: { '': [greater] },
       instanceFuncs: {}
     }
-  }
+  },
+  exports: []
 })
 
 const genTest = (src: string): Module => generator.generateModule('virtual:test', src);
@@ -79,6 +80,12 @@ Deno.test('must generate, expression targeted', () => {
     `def Test
         ([i32, i64] a): [i32, i64] Test(a), a;
         (): i32{} {3, 10};
+    end`,
+    `def TestStructs
+        struct i32;
+        struct f32;
+        (i32 i): TestStructs new[i];
+        (f32 i): TestStructs new[i];
     end`
     ];
     codes.forEach(genTest);

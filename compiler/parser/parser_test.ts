@@ -92,6 +92,13 @@ Deno.test('must parse', () => {
       ],
       meta
     }, meta
+  });
+  assertEquals(parserFor('new[2] + new[smt()]').parseExpression(), {
+    id: 'call', func: { meta, route: ['+'] },
+    meta, args: [
+      { id: 'build', args: [ { id: 'literal', meta, value: { meta, type: 'int', value: '2' } } ], meta },
+      { id: 'build', args: [ { id: 'call', meta, func: { meta, route: ['smt'] }, args: [] } ], meta },
+    ]
   })
 });
 

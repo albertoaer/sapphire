@@ -50,6 +50,7 @@ export type Expression = ({
   readonly value: Expression
 } | {
   readonly id: 'build',
+  readonly structIdx: number,
   readonly args: Expression[]
 } | {
   readonly id: 'none'
@@ -60,7 +61,7 @@ export type Expression = ({
 export const ArraySizeAuto = 'auto';
 
 export class Type {
-  readonly base: Def | Type | Type[] | NativeType | 'void' | `literal:`;
+  readonly base: DefHeader | Type | Type[] | NativeType | 'void' | `literal:${string}`;
   readonly array?: number | typeof ArraySizeAuto;
 
   constructor(base: Type['base'], array?: Type['array']) {
@@ -120,9 +121,12 @@ export interface Func {
   readonly source: Expression | FunctionReference // Body
 }
 
-export interface Def {
+export interface DefHeader {
   readonly route: ModuleRoute;
   readonly name: string;
+}
+
+export interface Def extends DefHeader {
   readonly instanceOverloads: number;
 
   readonly funcs: { [name in string]: Func[] };

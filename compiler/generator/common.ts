@@ -14,7 +14,12 @@ export interface ResolutionEnv {
   fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc;
 }
 
-export interface FunctionResolutionEnv extends ResolutionEnv {
+export interface DefinitionResolutionEnv extends ResolutionEnv {
+  structFor(types: sapp.Type[]): number | undefined;
+  readonly self: sapp.Type;
+}
+
+export interface FunctionResolutionEnv extends DefinitionResolutionEnv {
   getValue(name: parser.ParserRoute): sapp.Expression & { name: number };
   setValue(name: parser.ParserRoute, tp: sapp.Type): number;
 

@@ -1,6 +1,7 @@
-import { sapp, parser, ResolutionEnv, FetchedInstanceFunc } from './common.ts';
+import { sapp, parser, ResolutionEnv, FetchedInstanceFunc, DefinitionResolutionEnv } from './common.ts';
 import { FunctionGenerator } from './function.ts';
 import { FeatureError, ParserError } from '../errors.ts';
+import { Type } from '../sapp.ts';
 
 class InstanceFunction {
   // Each index is a struct
@@ -36,22 +37,30 @@ class InstanceFunction {
   }
 }
 
-export class DefinitionGenerator implements ResolutionEnv {
+export class DefinitionGenerator implements DefinitionResolutionEnv {
   private readonly structs: sapp.Type[][] = [];
   
   // Functions under a name always have different input signature
   private readonly functions: { [name in string]: FunctionGenerator[] } = {};
-
   private readonly instanceFunctions: { [name in string]: InstanceFunction[] } = {};
 
+  public readonly self: sapp.Type;
+  public readonly exported: boolean;
+  
   private generated: sapp.Def | undefined = undefined;
 
-  public readonly exported: boolean;
-
   constructor(
-    public readonly route: sapp.ModuleRoute, private readonly env: ResolutionEnv, private readonly def: parser.Def
+    public readonly route: sapp.ModuleRoute,
+    private readonly env: ResolutionEnv,
+    private readonly def: parser.Def
   ) {
+    this.self = new Type({ name: def.name, route: route });
     this.exported = def.doExport;
+  }
+
+  structFor(types: sapp.Type[]): number | undefined {
+    const idx = this.structs.findIndex(x => x.every((t, i) => t.isEquals(types[i])));
+    return idx < 0 ? undefined : idx;
   }
 
   resolveType(raw: parser.Type): sapp.Type {
@@ -73,7 +82,7 @@ export class DefinitionGenerator implements ResolutionEnv {
 
   private generateStruct(pre: parser.Struct) {
     const struct: sapp.Type[] = pre.types.map(x => this.env.resolveType(x));
-    if (this.structs.find(x => x.every((t, i) => t.isEquals(struct[i]))))
+    if (this.structs.find(x => x.length === struct.length && x.every((t, i) => t.isEquals(struct[i]))))
       throw new ParserError(pre.meta.line, 'Repeated struct');
     this.structs.push(struct);
   }

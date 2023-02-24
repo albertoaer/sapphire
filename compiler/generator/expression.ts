@@ -66,8 +66,12 @@ export class ExpressionGenerator {
     return this.env.getValue(name);
   }
 
-  private processBuild({ meta }: parser.Expression & { id: 'build' }): sapp.Expression {
-    throw new FeatureError(meta.line, 'Struct Building');
+  private processBuild({ args, meta }: parser.Expression & { id: 'build' }): sapp.Expression {
+    const params = args.map(x => this.processEx(x));
+    const structIdx = this.env.structFor(params.map(x => x.type));
+    if (structIdx === undefined)
+      throw new ParserError(meta.line, 'Cannot find a struct to build a instance');
+    return { id: 'build', args: params, structIdx, type: this.env.self };
   }
 
   private processNone(_: parser.Expression & { id: 'none' }): sapp.Expression {

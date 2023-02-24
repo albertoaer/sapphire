@@ -108,6 +108,7 @@ export class Parser {
   }
 
   parseExpressionTerm(): Expression {
+    if (this.tokens.nextIs({ value: 'new' })) return this.parseBuild();
     if (this.tokens.nextIs({ value: 'if' })) return this.parseIf();
     if (this.tokens.nextIs({ value: '.' })) return { id: 'none', meta: { line: this.tokens.line } };
 

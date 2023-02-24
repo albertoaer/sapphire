@@ -7,7 +7,7 @@ export type Token = {
 }
 
 export const Keywords = [
-  'def', 'except', 'extend', 'open', 'use', 'it',
+  'def', 'except', 'extend', 'open', 'use', 'new',
   'if','then', 'else', 'end', 'struct', 'priv', 'as',
   'into', 'this', 'ensured', 'implicit', 'true', 'false', 'export',
   '(', ')', '[', ']', '{', '}', ';', ',', '.', ':', '_', '='

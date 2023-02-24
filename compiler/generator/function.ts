@@ -1,4 +1,4 @@
-import { parser, sapp, ResolutionEnv, FunctionResolutionEnv, FetchedInstanceFunc } from './common.ts';
+import { parser, sapp, DefinitionResolutionEnv, FunctionResolutionEnv, FetchedInstanceFunc } from './common.ts';
 import { ExpressionGenerator } from './expression.ts';
 import { ParserError } from '../errors.ts';
 
@@ -97,7 +97,7 @@ export class FunctionGenerator implements FunctionResolutionEnv {
 
   constructor(
     func: parser.Func,
-    private readonly env: ResolutionEnv,
+    private readonly env: DefinitionResolutionEnv,
     output?: sapp.Type,
     struct?: sapp.Type[]
   ) {
@@ -107,6 +107,14 @@ export class FunctionGenerator implements FunctionResolutionEnv {
     this._expr = new ExpressionGenerator(this, func.source);
     this._func = new Function(this.inputs, func.meta, output, struct);
     this._treated = false;
+  }
+
+  get self(): sapp.Type {
+    return this.env.self;
+  }
+
+  structFor(types: sapp.Type[]): number | undefined {
+    return this.env.structFor(types);
   }
   
   scoped<T>(action: () => T): T {
