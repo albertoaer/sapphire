@@ -1,11 +1,27 @@
 import flags from './cli.ts';
 import { Compiler } from './compiler.ts';
-import { WasmCompiler } from './sapp_wasm/compiler.ts';
+import { WasmCompiler, Kernel } from './sapp_wasm/mod.ts';
 import { FileSystemModuleProvider } from './deps.ts';
 
-const fsp = new FileSystemModuleProvider();
+if (!flags.file || (!flags.print && !flags.output && !flags.call)) {
+  console.log('Nothing to do');
+  Deno.exit(-1);
+}
+
+const fsp = new FileSystemModuleProvider(Kernel);
 const compiler: Compiler = new WasmCompiler(fsp);
 
-for (const file of flags.files) {
-  compiler.compile(file);
+const code = compiler.compile(flags.file);
+
+if (flags.print) {
+  console.log(code);
+}
+
+if (flags.output) {
+  Deno.writeFileSync(flags.output, code);
+}
+
+if (flags.call) {
+  const { instance } = await WebAssembly.instantiate(code);
+  console.log((instance.exports[flags.call] as CallableFunction)(...flags.args));
 }

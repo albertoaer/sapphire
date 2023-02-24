@@ -9,7 +9,11 @@ export class FileSystemModuleProvider implements ModuleProvider {
   private assertFileRoute(parts: string[]): string {
     const partial = join(...parts);
     const fileRoute = isAbsolute(partial) ? partial : join(Deno.cwd(), partial);
-    if (!Deno.statSync(fileRoute).isFile) throw new IOError('Expecting file to import');
+    try {
+      if (!Deno.statSync(fileRoute).isFile) throw new IOError('Expecting file to import');
+    } catch (_) {
+      throw new IOError(`Cannot find: ${fileRoute}`);
+    }
     return fileRoute;
   }
 
