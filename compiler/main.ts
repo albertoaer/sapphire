@@ -1,6 +1,6 @@
 import flags from './cli.ts';
 import { Compiler } from './compiler.ts';
-import { WasmCompiler, Kernel } from './sapp_wasm/mod.ts';
+import { WasmCompiler } from './sapp_wasm/mod.ts';
 import { FileSystemModuleProvider } from './deps.ts';
 
 if (!flags.file || (!flags.print && !flags.output && !flags.call)) {
@@ -8,7 +8,7 @@ if (!flags.file || (!flags.print && !flags.output && !flags.call)) {
   Deno.exit(-1);
 }
 
-const fsp = new FileSystemModuleProvider(Kernel);
+const fsp = new FileSystemModuleProvider();
 const compiler: Compiler = new WasmCompiler(fsp);
 
 const code = compiler.compile(flags.file);

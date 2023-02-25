@@ -6,7 +6,6 @@ import { DependencyError, FeatureError } from '../errors.ts';
 import { DefinitionGenerator } from './definition.ts';
 
 export interface ModuleProvider {
-  readonly kernel?: sapp.Module;
   getRoute(descriptor: sapp.ModuleDescriptor): sapp.ModuleRoute;
   getModule(descriptor: sapp.ModuleDescriptor, generator: Generator): sapp.Module;
 }
@@ -14,11 +13,8 @@ export interface ModuleProvider {
 export class Generator {
   private readonly inProgressModules: Set<sapp.ModuleRoute> = new Set();
   private readonly storedModules: Map<sapp.ModuleRoute, sapp.Module> = new Map();
-  private kernel: sapp.Module | undefined;
 
-  constructor(private readonly provider?: ModuleProvider) {
-    this.kernel = provider?.kernel;
-  }
+  constructor(private readonly provider?: ModuleProvider, private kernel?: sapp.Module) { }
 
   overwriteKernel(kernel: sapp.Module | null) {
     this.kernel = kernel ?? undefined;

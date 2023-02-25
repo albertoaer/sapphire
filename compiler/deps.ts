@@ -4,7 +4,7 @@ import { Module, ModuleDescriptor, ModuleRoute } from "./sapp.ts";
 import { IOError } from './errors.ts';
 
 export class FileSystemModuleProvider implements ModuleProvider {
-  constructor(public readonly kernel?: Module) { }
+  constructor() { }
 
   private assertFileRoute(parts: string[]): string {
     const partial = join(...parts);

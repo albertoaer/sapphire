@@ -1,5 +1,6 @@
 import { wasm, sapp } from './common.ts';
 import { Generator, ModuleProvider } from '../generator/generator.ts';
+import { Kernel } from './env/kernel.ts';
 import type { Compiler } from '../compiler.ts';
 import { ExpressionCompiler } from './expression.ts';
 import { FunctionManager } from './functions.ts';
@@ -10,7 +11,7 @@ export class WasmCompiler implements Compiler {
   private readonly generator: Generator;
 
   constructor(provider: ModuleProvider) {
-    this.generator = new Generator(provider);
+    this.generator = new Generator(provider, Kernel);
   }
 
   compile(file: string): Uint8Array {
