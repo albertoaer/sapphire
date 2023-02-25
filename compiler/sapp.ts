@@ -113,7 +113,7 @@ export const F32 = new Type('f32');
 export const F64 = new Type('f64');
 
 // References are treated by the compiler
-export type FunctionReference = number
+export type FunctionReference = number | string[]
 
 export interface Func {
   readonly inputSignature: Type[], // Parameter types
@@ -121,6 +121,10 @@ export interface Func {
   readonly outputSignature: Type, // Return type
   readonly locals?: Type[], // Defined locals with their type
   readonly source: Expression | FunctionReference // Body
+}
+
+export function isFunctionReference(source: Expression | FunctionReference): source is FunctionReference {
+  return typeof source === 'number' || Array.isArray(source);
 }
 
 export interface DefHeader {

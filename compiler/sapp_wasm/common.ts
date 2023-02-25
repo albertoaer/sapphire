@@ -16,7 +16,7 @@ export function convertToWasmType(orig: sapp.Type): wasm.WasmType {
     case 'f64': return wasm.WasmType.F64;
     case 'void': throw new CompilerError('Wasm', 'Trying to represent void');
   }
-  throw new CompilerError('Wasm', `Type not handled ${orig.toString()}`)
+  throw new CompilerError('Wasm', `Type not handled: ${orig.toString()}`)
 }
 
 export type ResolvedFunction = number | RawCodeSpec

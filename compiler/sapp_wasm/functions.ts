@@ -16,7 +16,7 @@ export class FunctionManager implements FunctionResolutor {
   constructor(private readonly module: wasm.WasmModule, private readonly injector: FunctionInjector) { }
 
   useFunc(func: sapp.Func): ResolvedFunction {
-    if (typeof func.source === 'number') {
+    if (sapp.isFunctionReference(func.source)) {
       const injected = this.injector.get(func.source);
       if (injected === undefined) throw new CompilerError('Wasm', 'Unknown reference function code: ' + func.source);
       return injected;

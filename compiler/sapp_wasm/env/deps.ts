@@ -1,9 +1,9 @@
-import type { FunctionInjector, RawCodeSpec } from '../common.ts';
+import { FunctionInjector, sapp, ResolvedFunction } from '../common.ts';
 import { RawInstructions } from './rawCode.ts';
 
 export class EnvironmentInjector implements FunctionInjector {
-  get(ref: number): number | RawCodeSpec | undefined {
-    if (ref in RawInstructions) return {
+  get(ref: sapp.FunctionReference): ResolvedFunction | undefined {
+    if (typeof ref === 'number' && ref in RawInstructions) return {
       instruction: new Uint8Array([RawInstructions[ref]]),
       reverseStack: false
     }
