@@ -3,18 +3,25 @@ export * as parser from '../parser/common.ts';
 import * as sapp from '../sapp.ts';
 export * as sapp from '../sapp.ts';
 
+export interface DefinitionBuilder {
+  readonly self: sapp.Type,
+  readonly exported: boolean;
+  build(): sapp.Def;
+  fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc;
+}
+
 export type FetchedInstanceFunc = {
   funcGroup: sapp.Func[],
   owner: sapp.Expression
 }
 
-export interface ResolutionEnv {
+export interface ModuleResolutionEnv {
   resolveType(raw: parser.Type): sapp.Type;
 
   fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc;
 }
 
-export interface DefinitionResolutionEnv extends ResolutionEnv {
+export interface DefinitionResolutionEnv extends ModuleResolutionEnv {
   structFor(types: sapp.Type[]): number | undefined;
   readonly self: sapp.Type;
 }

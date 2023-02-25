@@ -1,4 +1,4 @@
-import { sapp, parser, ResolutionEnv, FetchedInstanceFunc, DefinitionResolutionEnv } from './common.ts';
+import { sapp, parser, ModuleResolutionEnv, FetchedInstanceFunc, DefinitionResolutionEnv, DefinitionBuilder } from './common.ts';
 import { FunctionGenerator } from './function.ts';
 import { FeatureError, ParserError } from '../errors.ts';
 import { Type } from '../sapp.ts';
@@ -37,7 +37,7 @@ class InstanceFunction {
   }
 }
 
-export class DefinitionGenerator implements DefinitionResolutionEnv {
+export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolutionEnv {
   private readonly structs: sapp.Type[][] = [];
   
   // Functions under a name always have different input signature
@@ -50,12 +50,12 @@ export class DefinitionGenerator implements DefinitionResolutionEnv {
   private generated: sapp.Def | undefined = undefined;
 
   constructor(
-    public readonly route: sapp.ModuleRoute,
-    private readonly env: ResolutionEnv,
+    public readonly header: sapp.DefHeader,
+    private readonly env: ModuleResolutionEnv,
     private readonly def: parser.Def
   ) {
-    this.self = new Type({ name: def.name, route: route });
-    this.exported = def.doExport;
+    this.self = new Type(header);
+    this.exported = def.exported;
   }
 
   structFor(types: sapp.Type[]): number | undefined {
@@ -134,15 +134,14 @@ export class DefinitionGenerator implements DefinitionResolutionEnv {
       ([n, f]) => [n, f.map(f => f.functions)]
     ));
     return {
-      name: this.def.name,
-      route: this.route,
+      ...this.header,
       instanceOverloads: this.structs.length,
       funcs,
       instanceFuncs
     }
   }
 
-  generate(): sapp.Def {
+  build(): sapp.Def {
     if (this.generated === undefined) {
       this.def.structs.forEach(this.generateStruct.bind(this));
       this.def.functions.forEach(this.generateFunction.bind(this));

@@ -101,6 +101,7 @@ export class FunctionGenerator implements FunctionResolutionEnv {
     output?: sapp.Type,
     struct?: sapp.Type[]
   ) {
+    if (!func.source) throw new ParserError(func.meta.line, 'Expecting function body');
     const args = func.inputs.map(x => [x.name, env.resolveType(x.type)] as [string, sapp.Type]);
     this.inputs = args.map(x => x[1]);
     this._prms = new Parameters(args);

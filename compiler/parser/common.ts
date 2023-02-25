@@ -34,7 +34,7 @@ export type Func = {
   readonly inputs: ArgList,
   readonly output?: Type,
   readonly struct?: HeuristicList
-  readonly source: Expression,
+  readonly source?: Expression,
   readonly meta: ParserMeta
 }
 
@@ -103,5 +103,6 @@ export type Def = {
   structs: Struct[],
   functions: Func[],
   meta: ParserMeta,
-  doExport: boolean
+  exported: boolean,
+  ensured: boolean
 }

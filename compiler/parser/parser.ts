@@ -6,6 +6,9 @@ import { TokenList, TokenExpect, Token, Tokenizer } from './tokenizer.ts';
 
 export type ParserConfig = { tokens: TokenList } | { source: string }
 
+const DefModifiersValues = ['export', 'ensured'] as const;
+type DefModifiers = Set<typeof DefModifiersValues[number]>;
+
 export class Parser {
   public readonly dependencies: Import[] = [];
   public readonly definitions: Def[] = [];
@@ -222,15 +225,20 @@ export class Parser {
   }
 
   parseFunc(name: string, struct?: HeuristicList): Func {
-    const line = this.tokens.line;
+    const meta = { line: this.tokens.line };
     const inputs = this.parseArgList({ value: ')'});
     const output = this.tokens.nextIs({ value: ':' }) ? this.parseType() : undefined;
+
+    if (this.tokens.nextIs({ value: ';' })) return { inputs, name, output, struct, meta }
+
     const exprs: Expression[] = [];
     do {
       exprs.push(this.parseExpression());
     } while (this.tokens.nextIs({ value: ',' }));
-    const source: Expression = exprs.length === 1 ? exprs[0] : { id: 'group', exprs, meta: { line: this.tokens.line } };
-    return { inputs, name, output, struct, source, meta: { line } }
+    const source: Expression = exprs.length === 1 ? exprs[0] : {
+      id: 'group', exprs, meta: { line: this.tokens.line }
+    };
+    return { inputs, name, output, struct, source, meta }
   }
 
   parseMethod(): Func {
@@ -253,7 +261,7 @@ export class Parser {
       this.dependencies.push({ route: route, meta: { line }, mode: 'named', name: route.at(-1) as string});
   }
 
-  parseDef(doExport = false) {
+  parseDef(mods: DefModifiers) {
     const line = this.tokens.line;
     const opname = this.tokens.nextIs({ type: 'operator' })?.value;
     const name = opname ? opname : this.tokens.expectNext({ type: 'identifier' }).value;
@@ -269,20 +277,36 @@ export class Parser {
       else if ((tk = this.tokens.nextIs({ value: '(' }))) functions.push(this.parseFunc(''));
       else if ((tk = this.tokens.nextIs({ value: '[' }))) functions.push(this.parseMethod());
       else if ((tk = this.tokens.nextIs({ value: 'struct' }))) structs.push(this.parseStruct());
-      else this.tokens.unexpect();
       while (this.tokens.nextIs({ value: ';' }));
     }
-    this.definitions.push({ name, structs, functions, meta: { line }, doExport });
+    this.definitions.push({
+      name, structs, functions, meta: { line }, exported: mods.has('export'), ensured: mods.has('ensured')
+    });
+  }
+
+  getDefModifiers(): DefModifiers {
+    const remain: DefModifiers = new Set(DefModifiersValues);
+    const mods: DefModifiers = new Set();
+    outter: do {
+      for (const v of remain) {
+        if (this.tokens.nextIs({ value: v })) {
+          remain.delete(v);
+          mods.add(v);
+          continue outter;
+        }
+      }
+      if (this.tokens.nextIs({ value: 'def' })) break;
+      else this.tokens.unexpect();
+      throw new ParserError(this.tokens.line, 'Expecting definition');
+    } while (true);
+    return mods;
   }
 
   parse() {
     while (!this.tokens.empty) {
       if (this.tokens.nextIs({ value: 'use' })) this.parseUse();
-      else if (this.tokens.nextIs({ value: 'export' })) {
-        this.tokens.expectNext({ value: 'def' });
-        this.parseDef(true);
-      } else if (this.tokens.nextIs({ value: 'def' })) this.parseDef();
-      else this.tokens.unexpect();
+      const modifiers = this.getDefModifiers();
+      this.parseDef(modifiers);
     }
   }
 }

@@ -1,18 +1,11 @@
-import { ResolutionEnv, sapp, parser, FetchedInstanceFunc } from "./common.ts";
-import { DefinitionGenerator } from "./definition.ts";
+import { ModuleResolutionEnv, sapp, parser, FetchedInstanceFunc, DefinitionBuilder } from "./common.ts";
 import { ParserError } from "../errors.ts";
 
-export class ModuleGenerator implements ResolutionEnv {
-  private readonly defs: { [name in string]: DefinitionGenerator };
+export class ModuleGenerator implements ModuleResolutionEnv {
   private processed: sapp.Module | undefined = undefined;
+  private readonly defs: { [name in string]: DefinitionBuilder } = { };
 
-  constructor(
-    private readonly globals: Map<string, sapp.GlobalObject>,
-    private readonly route: sapp.ModuleRoute,
-    defs: parser.Def[]
-  ) {
-    this.defs = Object.fromEntries(defs.map(x => [x.name, new DefinitionGenerator(route, this, x)]));
-  }
+  constructor(private readonly globals: Map<string, sapp.GlobalObject>) { }
 
   resolveType(raw: parser.Type): sapp.Type {
     const array = raw.array ? (raw.array.size !== undefined ? raw.array.size : sapp.ArraySizeAuto) : undefined;
@@ -25,11 +18,13 @@ export class ModuleGenerator implements ResolutionEnv {
     if (Array.isArray(raw.base)) return new sapp.Type(raw.base.map(this.resolveType.bind(this)), array);
     if (raw.base.route.length === 1 && raw.base.route[0] === 'void') return sapp.Void;
     if (raw.base.route.length === 1 && raw.base.route[0] === 'any') return sapp.Any;
+    
     if (this.defs[raw.base.route[0]]) {
       if (raw.base.route.length > 1)
         throw new ParserError(raw.base.meta.line, 'Functions as types are not supported');
       return new sapp.Type(this.defs[raw.base.route[0]].self, array);
     }
+
     const rootval = raw.base.route[0];
     if (sapp.isNativeType(rootval)) {
       if (raw.base.route.length > 1)
@@ -52,10 +47,12 @@ export class ModuleGenerator implements ResolutionEnv {
 
   fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
     if (route.route[0] === undefined) throw new ParserError(route.meta.line, 'Empty route');
+    
     if (route.route[0] in this.defs)
       return this.defs[route.route[0]].fetchFunc(
         { route: route.route.slice(1), meta: route.meta }, inputSignature
       );
+    
     const r = this.globals.get(route.route[0]);
     if (!r) throw new ParserError(route.meta.line, `Symbol not found: ${route.route[0]}`);
     let def = r;
@@ -75,12 +72,16 @@ export class ModuleGenerator implements ResolutionEnv {
     return f;
   }
 
-  get module(): sapp.Module {
+  set(name: string, def: DefinitionBuilder) {
+    this.defs[name] = def;
+  }
+
+  build(route: sapp.ModuleRoute): sapp.Module {
     if (this.processed === undefined)
       this.processed = {
-        route: this.route,
-        defs: Object.fromEntries(Object.entries(this.defs).map(([n, d]) => [n, d.generate()])),
-        exports: Object.values(this.defs).filter(x => x.exported).map(x => x.generate())
+        route,
+        defs: Object.fromEntries(Object.entries(this.defs).map(([n, d]) => [n, d.build()])),
+        exports: Object.values(this.defs).filter(x => x.exported).map(x => x.build())
       };
     return this.processed;
   }
