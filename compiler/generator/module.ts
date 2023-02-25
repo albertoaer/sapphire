@@ -24,6 +24,7 @@ export class ModuleGenerator implements ResolutionEnv {
     }
     if (Array.isArray(raw.base)) return new sapp.Type(raw.base.map(this.resolveType.bind(this)), array);
     if (raw.base.route.length === 1 && raw.base.route[0] === 'void') return sapp.Void;
+    if (raw.base.route.length === 1 && raw.base.route[0] === 'any') return sapp.Any;
     if (this.defs[raw.base.route[0]]) {
       if (raw.base.route.length > 1)
         throw new ParserError(raw.base.meta.line, 'Functions as types are not supported');
