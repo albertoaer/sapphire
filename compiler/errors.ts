@@ -14,7 +14,7 @@ export class ParserError extends GenericError {
 
 export type RegisteredUnsupportedFeature =
   'Attribute Access' | 'Struct Building' | 'Indexation' | 'Call Returned Function' | 'Function Attributes' |
-  'Function Tables' | 'Native Functions' | 'Strings'
+  'Function Tables' | 'Native Functions' | 'Strings' | 'Ensured Definitions'
 
 export class FeatureError extends GenericError {
   constructor(line: number | null, feature: RegisteredUnsupportedFeature) {
