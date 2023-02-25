@@ -104,6 +104,7 @@ export class Type {
 }
 
 export const Void = new Type('void');
+export const Any = new Type('any');
 export const String = new Type('string');
 export const Bool = new Type('bool');
 export const I32 = new Type('i32');
