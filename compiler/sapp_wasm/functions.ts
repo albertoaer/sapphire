@@ -15,17 +15,30 @@ export class FunctionManager implements FunctionResolutor {
   
   constructor(private readonly module: wasm.WasmModule, private readonly injector: FunctionInjector) { }
 
+  signatureOf(func: sapp.Func): [WasmType[], WasmType[]] {
+    return [
+      [...(func.struct ? [WasmType.I32] : []), ...func.inputSignature.map(convertToWasmType)],
+      func.outputSignature.isVoid ? [] : [convertToWasmType(func.outputSignature)]
+    ];
+  }
+
+  useImport(func: sapp.Func): ResolvedFunction | undefined {
+    if (Array.isArray(func.source) && func.source.length === 2) {
+      const signature = this.signatureOf(func);
+      return this.module.import(func.source[0], func.source[1], signature[0], signature[1]);
+    }
+  }
+
   useFunc(func: sapp.Func): ResolvedFunction {
     if (sapp.isFunctionReference(func.source)) {
-      const injected = this.injector.get(func.source);
-      if (injected === undefined) throw new CompilerError('Wasm', 'Unknown reference function code: ' + func.source);
+      const injected = this.injector.get(func.source) ?? this.useImport(func);
+      if (injected === undefined)
+        throw new CompilerError('Wasm', 'Unknown reference function code: ' + func.source);
       return injected;
     }
     if (!this.functions.has(func)) {
-      this.functions.set(func, this.module.define(
-        [...(func.struct ? [WasmType.I32] : []), ...func.inputSignature.map(convertToWasmType)],
-        func.outputSignature.isVoid ? [] : [convertToWasmType(func.outputSignature)]
-      ));
+      const signature = this.signatureOf(func);
+      this.functions.set(func, this.module.define(signature[0], signature[1]));
       this.defined.push(func);
     }
     return this.functions.get(func)!.funcIdx;
