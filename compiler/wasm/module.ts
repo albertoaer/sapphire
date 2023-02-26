@@ -88,7 +88,13 @@ export type WasmTable = {
 
 export type WasmElem = {
   funcIdxVec: number[],
-  table: number,
+  table: number
+}
+
+export type WasmMemoryConfig = {
+  import?: { mod: string, name: string },
+  limits: { min: number, max?: number },
+  exportAs?: string,
 }
 
 function section(section: WasmSection, data: number[]): number[] {
@@ -102,9 +108,12 @@ export class WasmModule {
   private readonly exports: WasmExport[] = [];
   private readonly tables: WasmTable[] = [];
   private readonly elems: WasmElem[] = [];
+  private memoryConfig?: WasmMemoryConfig;
   private mainFunction: number | undefined;
   private lockedImports = false;
-  
+
+  constructor() { }
+
   get code(): Uint8Array {
     return Uint8Array.from([
       ...magicModuleHeader,
@@ -113,6 +122,7 @@ export class WasmModule {
       ...this.getImports(),
       ...this.getFunctions(),
       ...this.getTables(),
+      ...this.getMemory(),
       ...this.getExports(),
       ...this.getStart(),
       ...this.getElems(),
@@ -138,9 +148,19 @@ export class WasmModule {
 
   private getImports(): number[] {
     if (!this.imports) return [];
-    return section(WasmSection.Import, encodeVector(this.imports.map(
+    const imports = this.imports.map(
       x => [...encodeString(x.mod), ...encodeString(x.name), WasmExportIndex.Function, x.typeIdx]
-    )));
+    );
+    if (this.memoryConfig?.import) {
+      const limits = this.memoryConfig.limits;
+      imports.push([
+        ...encodeString(this.memoryConfig.import.mod),
+        ...encodeString(this.memoryConfig.import.name),
+        WasmExportIndex.Memory,
+        ...(limits.max ? [1, limits.min, limits.max] : [0, limits.min])
+      ]);
+    }
+    return section(WasmSection.Import, encodeVector(imports));
   }
 
   private getFunctions(): number[] {
@@ -155,6 +175,12 @@ export class WasmModule {
     return section(WasmSection.Table, encodeVector(this.tables.map(x => {
       return [x.refType, 0, x.count]
     })));
+  }
+
+  private getMemory(): number[] {
+    if (!this.memoryConfig || this.memoryConfig?.import) return [];
+    const limits = this.memoryConfig.limits;
+    return section(WasmSection.Memory, encodeVector([limits.max ? [1, limits.min, limits.max] : [0, limits.min]]));
   }
   
   private getFunctionsCode(): number[] {
@@ -173,9 +199,12 @@ export class WasmModule {
   
   private getExports(): number[] {
     if (!this.exports) return [];
-    return section(WasmSection.Export, encodeVector(this.exports.map(
+    const exports = this.exports.map(
       x => [...encodeString(x.name), WasmExportIndex.Function, ...unsignedLEB128(x.funcIdx)]
-    )));
+    );
+    if (this.memoryConfig?.exportAs)
+      exports.push([...encodeString(this.memoryConfig.exportAs), WasmExportIndex.Memory, 0])
+    return section(WasmSection.Export, encodeVector(exports));
   }
 
   private getStart(): number[] {
@@ -217,5 +246,10 @@ export class WasmModule {
     this.tables.push({ count: functions.length, refType: WasmType.Funcref });
     this.elems.push({ funcIdxVec: functions, table });
     return table;
+  }
+
+  configureMemory(memoryConfig: WasmMemoryConfig) {
+    if (this.memoryConfig) throw new CompilerError('Wasm', 'Memory already defined');
+    this.memoryConfig = memoryConfig;
   }
 }

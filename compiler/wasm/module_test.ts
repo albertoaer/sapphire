@@ -30,3 +30,23 @@ Deno.test('tables', async () => {
   assertEquals((instance.exports.run as CallableFunction)(1), 30);
   assertEquals((instance.exports.run as CallableFunction)(2), 50);
 });
+
+Deno.test('memory', async() => {  
+  {
+    const module = new WasmModule();
+    module.configureMemory({ import: { mod: 'instance', name: 'memory' }, limits: { min: 1 }, exportAs: 'mem' })
+    module.define([], [], { main: true }).body = new Uint8Array([0x41, 0, 0x41, 1, 0x36, 0, 0]);
+    const memory = new WebAssembly.Memory({ initial: 1 });
+    assertEquals(new Uint8Array(memory.buffer)[0], 0);
+    const { instance } = await WebAssembly.instantiate(module.code, { instance: { memory } });
+    assertEquals(new Uint8Array(memory.buffer)[0], 1);
+    assertEquals(instance.exports.mem, memory);
+  }
+  {
+    const module = new WasmModule();
+    module.configureMemory({ limits: { min: 1 }, exportAs: 'mem' })
+    module.define([], [], { main: true }).body = new Uint8Array([0x41, 10, 0x41, 1, 0x36, 0, 0]);
+    const { instance } = await WebAssembly.instantiate(module.code);
+    assertEquals(new Uint8Array((instance.exports.mem as WebAssembly.Memory).buffer)[10], 1);
+  }
+})
