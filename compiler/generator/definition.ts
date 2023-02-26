@@ -58,7 +58,7 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
   }
 
   structFor(types: sapp.Type[]): number | undefined {
-    const idx = this.structs.findIndex(x => x.every((t, i) => t.isEquals(types[i])));
+    const idx = this.structs.findIndex(x => sapp.typeArrayEquals(x, types));
     return idx < 0 ? undefined : idx;
   }
 
@@ -70,7 +70,7 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
     const name = route.route[0] ?? ''; // Empty name method if no name provided
     const funcArr = this.functions[name];
     if (funcArr !== undefined) {
-      const func = funcArr.find(x => x.inputs.every((x, i) => x.isEquals(inputSignature[i])));
+      const func = funcArr.find(x => sapp.typeArrayEquals(x.inputs, inputSignature));
       if (func === undefined)
         throw new ParserError(route.meta.line, `Invalid signature for function ${this.def.name}.${name}(...)`)
       if (route.route[1]) throw new FeatureError(route.meta.line, 'Function Attributes');
@@ -81,7 +81,7 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
 
   private generateStruct(pre: parser.Struct) {
     const struct: sapp.Type[] = pre.types.map(x => this.env.resolveType(x));
-    if (this.structs.find(x => x.length === struct.length && x.every((t, i) => t.isEquals(struct[i]))))
+    if (this.structs.find(x => sapp.typeArrayEquals(x, struct)))
       throw new ParserError(pre.meta.line, 'Repeated struct');
     this.structs.push(struct);
   }
@@ -100,7 +100,7 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
   private includeFunction(pre: parser.Func, func: FunctionGenerator) {
     if (this.functions[pre.name] === undefined) this.functions[pre.name] = [];
     if (this.functions[pre.name].find(
-      x => x.inputs.length === func.inputs.length && x.inputs.every((t, i) => t.isEquals(func.inputs[i]))
+      x => sapp.typeArrayEquals(x.inputs, func.inputs)
     ))
       throw new ParserError(pre.meta.line, 'Repeated function signature');
     this.functions[pre.name].push(func);
@@ -109,7 +109,7 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
   private includeInstanceFunction(pre: parser.Func, func: FunctionGenerator, structIdx: number) {
     if (this.instanceFunctions[pre.name] === undefined) this.instanceFunctions[pre.name] = [];
     const idx = this.instanceFunctions[pre.name].findIndex(
-      x => x.signature().length === func.inputs.length && x.signature().every((t, i) => t.isEquals(func.inputs[i]))
+      x => sapp.typeArrayEquals(x.signature(), func.inputs)
     );
     if (idx >= 0) this.instanceFunctions[pre.name][idx].push(pre, func, structIdx);
     else this.instanceFunctions[pre.name].push(new InstanceFunction({ pre, func, structIdx }, this.structs.length));

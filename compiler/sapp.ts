@@ -85,8 +85,7 @@ export class Type {
     if ('route' in tp.base) return false;
     if (Array.isArray(this.base)) {
       if (!(Array.isArray(tp.base))) return false;
-      const base = tp.base;
-      return this.base.every((x, i) => x.isEquals(base[i]));
+      return typeArrayEquals(this.base, tp.base);
     }
     if (Array.isArray(tp.base)) return false;
     return this.base.isEquals(tp.base);
@@ -111,6 +110,9 @@ export const I32 = new Type('i32');
 export const I64 = new Type('i64');
 export const F32 = new Type('f32');
 export const F64 = new Type('f64');
+
+export const typeArrayEquals = (a: Type[], b: Type[]): boolean =>
+  a.length === b.length && a.every((t, i) => t.isEquals(b[i]));
 
 // References are treated by the compiler
 export type FunctionReference = number | string[]

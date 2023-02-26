@@ -41,6 +41,7 @@ export class ModuleGenerator implements ModuleResolutionEnv {
     if ('defs' in root) {
       if (raw.base.route.length === 1) throw new ParserError(raw.base.meta.line, 'Module cannot be used as type');
       const def = root.defs[raw.base.route[1]];
+      if (!def) throw new ParserError(raw.base.meta.line, `Not found: ${raw.base.route[1]} in ${root.route}`);
       if (raw.base.route.length > 2) throw new ParserError(raw.base.meta.line, 'Function as types are not supported');
       return new sapp.Type(def, array);
     } else if ('name' in root) {
@@ -64,12 +65,14 @@ export class ModuleGenerator implements ModuleResolutionEnv {
     let i = 1;
     if ('defs' in r) {
       if (route.route[i] === undefined) throw new ParserError(route.meta.line, 'Module cannot be called');
-      def = r.defs[route.route[i]];
+      const item = r.defs[route.route[i]];
+      if (!item) throw new ParserError(route.meta.line, `Not found: ${route.route[1]} in ${def.route}`);
+      def = item;
       i++;
     }
     const name = route.route[i] === undefined ? "" : route.route[i];
-    const f = (def as sapp.Def).funcs[name].find(
-      x => x.inputSignature.every((x, i) => x.isEquals(inputSignature[i]))
+    const f = (def as sapp.Def).funcs[name]?.find(
+      x => sapp.typeArrayEquals(x.inputSignature, inputSignature)
     );
     if (f === undefined)
       throw new ParserError(route.meta.line, (def as sapp.Def).name + (name ? `.${name}` : '') + ' cannot be called');

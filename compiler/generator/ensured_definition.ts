@@ -23,7 +23,7 @@ export class EnsuredDefinitionGenerator implements DefinitionBuilder {
     const name = route.route[0] ?? ''; // Empty name method if no name provided
     const funcArr = this.functions[name];
     if (funcArr !== undefined) {
-      const func = funcArr.find(x => x.inputSignature.every((x, i) => x.isEquals(inputSignature[i])));
+      const func = funcArr.find(x => sapp.typeArrayEquals(x.inputSignature, inputSignature));
       if (func === undefined)
         throw new ParserError(route.meta.line, `Invalid signature for function ${this.def.name}.${name}(...)`)
       if (route.route[1]) throw new FeatureError(route.meta.line, 'Function Attributes');
