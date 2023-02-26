@@ -4,8 +4,6 @@ import { Module, ModuleDescriptor, ModuleRoute } from "./sapp.ts";
 import { IOError } from './errors.ts';
 
 export class FileSystemModuleProvider implements ModuleProvider {
-  constructor() { }
-
   private assertFileRoute(parts: string[]): string {
     const partial = join(...parts);
     const fileRoute = isAbsolute(partial) ? partial : join(Deno.cwd(), partial);

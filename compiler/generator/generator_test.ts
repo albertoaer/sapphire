@@ -1,13 +1,13 @@
 import { assertThrows } from "https://deno.land/std@0.174.0/testing/asserts.ts";
 import { ParserError } from "../errors.ts";
-import { Module, Func, Type } from "../sapp.ts";
+import { Module, Func, I32, Bool } from "../sapp.ts";
 import { Generator } from './generator.ts'
 
 const generator = new Generator();
 
 const add: Func = {
-  inputSignature: [new Type('i32'), new Type('i32')],
-  outputSignature: new Type('i32'),
+  inputSignature: [I32, I32],
+  outputSignature: I32,
   source: 0
 }
 
@@ -18,7 +18,7 @@ const mult: Func = {
 
 const greater: Func = {
   ...add,
-  outputSignature: new Type('bool'),
+  outputSignature: Bool,
   source: 2
 }
 

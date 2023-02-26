@@ -58,7 +58,7 @@ export type Expression = ({
   readonly type: Type;
 }
 
-export const ArraySizeAuto = 'auto';
+export const ArraySizeAuto = 'auto'
 
 export class Type {
   readonly base: DefHeader | Type | Type[] | NativeType | 'void' | `literal:${string}` | 'any';
@@ -116,11 +116,11 @@ export const F64 = new Type('f64');
 export type FunctionReference = number | string[]
 
 export interface Func {
-  readonly inputSignature: Type[], // Parameter types
-  readonly struct?: Type[], // Struct types
-  readonly outputSignature: Type, // Return type
-  readonly locals?: Type[], // Defined locals with their type
-  readonly source: Expression | FunctionReference // Body
+  readonly inputSignature: Type[]; // Parameter types
+  readonly struct?: Type[]; // Struct types
+  readonly outputSignature: Type; // Return type
+  readonly locals?: Type[]; // Defined locals with their type
+  readonly source: Expression | FunctionReference; // Body
 }
 
 export function isFunctionReference(source: Expression | FunctionReference): source is FunctionReference {
