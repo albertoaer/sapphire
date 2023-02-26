@@ -1,7 +1,8 @@
-import { sapp, parser, ModuleResolutionEnv, FetchedInstanceFunc, DefinitionResolutionEnv, DefinitionBuilder } from './common.ts';
+import {
+  sapp, parser, ModuleResolutionEnv, FetchedInstanceFunc, DefinitionResolutionEnv, DefinitionBuilder
+} from './common.ts';
 import { FunctionGenerator } from './function.ts';
 import { FeatureError, ParserError } from '../errors.ts';
-import { Type } from '../sapp.ts';
 
 class InstanceFunction {
   // Each index is a struct
@@ -45,7 +46,6 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
   private readonly instanceFunctions: { [name in string]: InstanceFunction[] } = {};
 
   public readonly self: sapp.Type;
-  public readonly exported: boolean;
   
   private generated: sapp.Def | undefined = undefined;
 
@@ -54,8 +54,7 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
     private readonly env: ModuleResolutionEnv,
     private readonly def: parser.Def
   ) {
-    this.self = new Type(header);
-    this.exported = def.exported;
+    this.self = new sapp.Type(header);
   }
 
   structFor(types: sapp.Type[]): number | undefined {

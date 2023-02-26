@@ -1,9 +1,14 @@
 import { ModuleResolutionEnv, sapp, parser, FetchedInstanceFunc, DefinitionBuilder } from "./common.ts";
 import { ParserError } from "../errors.ts";
 
+export type DefConfig = {
+  exported: boolean
+}
+
 export class ModuleGenerator implements ModuleResolutionEnv {
   private processed: sapp.Module | undefined = undefined;
   private readonly defs: { [name in string]: DefinitionBuilder } = { };
+  private readonly exported: DefinitionBuilder[] = [];
 
   constructor(private readonly globals: Map<string, sapp.GlobalObject>) { }
 
@@ -72,8 +77,10 @@ export class ModuleGenerator implements ModuleResolutionEnv {
     return f;
   }
 
-  set(name: string, def: DefinitionBuilder) {
+  set(name: string, def: DefinitionBuilder, config: DefConfig) {
+    // TODO: Avoid repeated definitions
     this.defs[name] = def;
+    if (config.exported) this.exported.push(def);
   }
 
   build(route: sapp.ModuleRoute): sapp.Module {
@@ -81,7 +88,7 @@ export class ModuleGenerator implements ModuleResolutionEnv {
       this.processed = {
         route,
         defs: Object.fromEntries(Object.entries(this.defs).map(([n, d]) => [n, d.build()])),
-        exports: Object.values(this.defs).filter(x => x.exported).map(x => x.build())
+        exports: this.exported.map(x => x.build())
       };
     return this.processed;
   }

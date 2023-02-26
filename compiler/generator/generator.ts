@@ -2,8 +2,9 @@ import { sapp, parser, DefinitionBuilder, ModuleResolutionEnv } from './common.t
 import { Parser } from '../parser/parser.ts';
 import { TokenList } from '../parser/tokenizer.ts';
 import { ModuleGenerator } from "./module.ts";
-import { DependencyError, FeatureError } from '../errors.ts';
+import { DependencyError } from '../errors.ts';
 import { DefinitionGenerator } from './definition.ts';
+import { EnsuredDefinitionGenerator } from './ensured_definition.ts';
 
 export interface ModuleProvider {
   getRoute(descriptor: sapp.ModuleDescriptor): sapp.ModuleRoute;
@@ -60,7 +61,7 @@ export class Generator {
   private definitionBuilderFor(
     header: sapp.DefHeader, env: ModuleResolutionEnv, def: Parser['definitions'][number]
   ): DefinitionBuilder {
-    if (def.ensured) throw new FeatureError(def.meta.line, 'Ensured Definitions');
+    if (def.ensured) return new EnsuredDefinitionGenerator(header, env, def);
     else return new DefinitionGenerator(header, env, def);
   }
 
@@ -68,8 +69,10 @@ export class Generator {
     const parser = new Parser(typeof source === 'string' ? { source } : { tokens: source });
     parser.parse();
     const generator = new ModuleGenerator(this.makeGlobals(parser.dependencies));
-    for (const def of parser.definitions)
-      generator.set(def.name, this.definitionBuilderFor({ route, name: def.name }, generator, def));
+    for (const def of parser.definitions){
+      const builder = this.definitionBuilderFor({ route, name: def.name }, generator, def);
+      generator.set(def.name, builder, { exported: def.exported });
+    }
     return generator.build(route);
   }
 }

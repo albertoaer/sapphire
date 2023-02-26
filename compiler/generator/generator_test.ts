@@ -78,14 +78,20 @@ Deno.test('must generate, expression targeted', () => {
       z ** 2
     end`,
     `def Test
-        ([i32, i64] a): [i32, i64] Test(a), a;
-        (): i32{} {3, 10};
+      ([i32, i64] a): [i32, i64] Test(a), a;
+      (): i32{} {3, 10};
     end`,
     `def TestStructs
-        struct i32;
-        struct f32;
-        (i32 i): TestStructs new[i];
-        (f32 i): TestStructs new[i];
+      struct i32;
+      struct f32;
+      (i32 i): TestStructs new[i];
+      (f32 i): TestStructs new[i];
+    end`,
+    `ensured def Ensured
+      hello(i32): string;
+    end
+    def TestEnsured
+      hey(): string Ensured.hello(5)
     end`
     ];
     codes.forEach(genTest);

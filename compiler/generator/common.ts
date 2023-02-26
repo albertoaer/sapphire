@@ -4,8 +4,7 @@ import * as sapp from '../sapp.ts';
 export * as sapp from '../sapp.ts';
 
 export interface DefinitionBuilder {
-  readonly self: sapp.Type,
-  readonly exported: boolean;
+  readonly self: sapp.Type;
   build(): sapp.Def;
   fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc;
 }
@@ -22,8 +21,8 @@ export interface ModuleResolutionEnv {
 }
 
 export interface DefinitionResolutionEnv extends ModuleResolutionEnv {
-  structFor(types: sapp.Type[]): number | undefined;
   readonly self: sapp.Type;
+  structFor(types: sapp.Type[]): number | undefined;
 }
 
 export interface FunctionResolutionEnv extends DefinitionResolutionEnv {
