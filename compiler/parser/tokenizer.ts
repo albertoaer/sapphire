@@ -13,7 +13,7 @@ export const Keywords = [
   '(', ')', '[', ']', '{', '}', ';', ',', '.', ':', '_', '='
 ] as const
 
-export const OperatorList = '^*+-%&$/@!|<>';
+export const OperatorList = '^*+-%&$/@!|<>'
 
 const isOpChar = (c: string) => c.length == 1 && OperatorList.includes(c)
 
@@ -23,7 +23,7 @@ const isNumChar = (c: string) => c.length == 1 && c.match(/[0-9]/) != null
 
 const isSpacer = (c: string) => c.length == 1 && '\n\t\r '.includes(c)
 
-const isKeyword = (c: string) => (Keywords as readonly string[]).includes(c);
+const isKeyword = (c: string) => (Keywords as readonly string[]).includes(c)
 
 const commentMark = '#'
 const multiCommentModifier = '~'
