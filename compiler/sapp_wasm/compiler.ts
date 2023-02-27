@@ -8,14 +8,11 @@ import { EnvironmentInjector } from './env/mod.ts';
 import { CompilerError } from '../errors.ts';
 
 export class WasmCompiler implements Compiler {
-  private readonly generator: Generator;
-
-  constructor(provider: ModuleProvider) {
-    this.generator = new Generator(provider, Kernel);
-  }
+  constructor(private readonly provider: ModuleProvider) { }
 
   compile(file: string): Uint8Array {
-    const generated = this.generator.generateKnownModule([file]);
+    const generator = new Generator(this.provider, Kernel);
+    const generated = generator.generateKnownModule([file]);
     const module = new wasm.WasmModule();
     const injector = new EnvironmentInjector();
     const manager = new FunctionManager(module, injector);

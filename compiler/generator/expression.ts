@@ -6,7 +6,8 @@ export class ExpressionGenerator {
 
   constructor(
     private readonly env: FunctionResolutionEnv,
-    private readonly expression: parser.Expression
+    private readonly expression: parser.Expression,
+    private readonly dependencyPool: Set<sapp.Func | sapp.Func[]>
   ) {}
 
   private processAssign(ex: parser.Expression & { id: 'assign' }): sapp.Expression {
@@ -19,6 +20,7 @@ export class ExpressionGenerator {
     if (!('route' in ex.func)) throw new FeatureError(ex.meta.line, 'Call Returned Function');
     const args = ex.args.map(x => this.processEx(x));
     const func = this.env.fetchFunc(ex.func, args.map(x => x.type));
+    this.dependencyPool.add('owner' in func ? func.funcGroup : func);
     return 'owner' in func
       ? { id: 'call_instanced', args, func: func.funcGroup, owner: func.owner, type: func.funcGroup[0].outputSignature } 
       : { id: 'call', args, func, type: func.outputSignature };

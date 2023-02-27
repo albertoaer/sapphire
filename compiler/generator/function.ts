@@ -57,8 +57,9 @@ class Function implements sapp.Func {
   constructor(
     public readonly inputSignature: sapp.Type[],
     private readonly meta: parser.ParserMeta,
+    public readonly dependsOn: Set<sapp.Func | sapp.Func[]>,
     private output?: sapp.Type,
-    public readonly struct?: sapp.Type[]
+    public readonly struct?: sapp.Type[],
   ) { }
 
   complete(source: sapp.Expression, locals: sapp.Type[]) {
@@ -93,6 +94,7 @@ export class FunctionGenerator implements FunctionResolutionEnv {
   private readonly _func: Function;
   private readonly _prms: Parameters;
   private readonly _lcls: Locals = new Locals();
+  private readonly _deps: Set<sapp.Func | sapp.Func[]> = new Set();
   private _treated: boolean;
 
   constructor(
@@ -105,8 +107,8 @@ export class FunctionGenerator implements FunctionResolutionEnv {
     const args = func.inputs.map(x => [x.name, env.resolveType(x.type)] as [string, sapp.Type]);
     this.inputs = args.map(x => x[1]);
     this._prms = new Parameters(args);
-    this._expr = new ExpressionGenerator(this, func.source);
-    this._func = new Function(this.inputs, func.meta, output, struct);
+    this._expr = new ExpressionGenerator(this, func.source, this._deps);
+    this._func = new Function(this.inputs, func.meta, this._deps, output, struct);
     this._treated = false;
   }
 

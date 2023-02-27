@@ -123,6 +123,7 @@ export interface Func {
   readonly outputSignature: Type; // Return type
   readonly locals?: Type[]; // Defined locals with their type
   readonly source: Expression | FunctionReference; // Body
+  readonly dependsOn?: Set<Func | Func[]>; // Functions called inside the function
 }
 
 export function isFunctionReference(source: Expression | FunctionReference): source is FunctionReference {

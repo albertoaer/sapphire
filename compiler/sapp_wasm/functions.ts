@@ -7,37 +7,46 @@ export interface FunctionResolutor {
   useFuncTable(funcs: sapp.Func[]): number;
 }
 
+function signatureOf(func: sapp.Func): [WasmType[], WasmType[]] {
+  return [
+    [...(func.struct ? [WasmType.I32] : []), ...func.inputSignature.map(convertToWasmType)],
+    func.outputSignature.isVoid ? [] : [convertToWasmType(func.outputSignature)]
+  ];
+}
+
 export class FunctionManager implements FunctionResolutor {
   private readonly defined: sapp.Func[] = [];
 
   private readonly functions: Map<sapp.Func, wasm.WasmFunction> = new Map();
+  private readonly imports: Map<sapp.Func, number> = new Map();
   private readonly instanceFunctions: Map<sapp.Func[], number> = new Map();
   
   constructor(private readonly module: wasm.WasmModule, private readonly injector: FunctionInjector) { }
 
-  signatureOf(func: sapp.Func): [WasmType[], WasmType[]] {
-    return [
-      [...(func.struct ? [WasmType.I32] : []), ...func.inputSignature.map(convertToWasmType)],
-      func.outputSignature.isVoid ? [] : [convertToWasmType(func.outputSignature)]
-    ];
-  }
-
-  useImport(func: sapp.Func): ResolvedFunction | undefined {
+  private tryUseImport(func: sapp.Func): ResolvedFunction | undefined {
     if (Array.isArray(func.source) && func.source.length === 2) {
-      const signature = this.signatureOf(func);
-      return this.module.import(func.source[0], func.source[1], signature[0], signature[1]);
+      if (!this.imports.has(func)) {
+        const signature = signatureOf(func);
+        this.imports.set(func, this.module.import(func.source[0], func.source[1], signature[0], signature[1]));
+      }
+      return this.imports.get(func);
     }
   }
 
   useFunc(func: sapp.Func): ResolvedFunction {
     if (sapp.isFunctionReference(func.source)) {
-      const injected = this.injector.get(func.source) ?? this.useImport(func);
+      const injected = this.injector.get(func.source) ?? this.tryUseImport(func);
       if (injected === undefined)
         throw new CompilerError('Wasm', 'Unknown reference function code: ' + func.source);
       return injected;
     }
     if (!this.functions.has(func)) {
-      const signature = this.signatureOf(func);
+      if (func.dependsOn)
+      for (const x of func.dependsOn)
+        if (Array.isArray(x)) this.useFuncTable(x);
+        else this.useFunc(x);
+
+      const signature = signatureOf(func);
       this.functions.set(func, this.module.define(signature[0], signature[1]));
       this.defined.push(func);
     }
