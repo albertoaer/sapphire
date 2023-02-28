@@ -114,20 +114,27 @@ export const F64 = new Type('f64');
 export const typeArrayEquals = (a: Type[], b: Type[]): boolean =>
   a.length === b.length && a.every((t, i) => t.isEquals(b[i]));
 
-// References are treated by the compiler
-export type FunctionReference = number | string[]
+// References and routes are treated by the compiler
+export type FunctionReference = number
+export type FunctionRoute = string[]
 
-export interface Func {
+export type FunctionBody = Expression | FunctionReference | FunctionRoute;
+
+export interface Func<T extends FunctionBody = FunctionBody> {
   readonly inputSignature: Type[]; // Parameter types
   readonly struct?: Type[]; // Struct types
   readonly outputSignature: Type; // Return type
   readonly locals?: Type[]; // Defined locals with their type
-  readonly source: Expression | FunctionReference; // Body
+  readonly source: T; // Body
   readonly dependsOn?: Set<Func | Func[]>; // Functions called inside the function
 }
 
-export function isFunctionReference(source: Expression | FunctionReference): source is FunctionReference {
-  return typeof source === 'number' || Array.isArray(source);
+export function isRefFunc(func: Func): func is Func<FunctionReference> {
+  return typeof func.source === 'number';
+}
+
+export function isRouteFunc(func: Func): func is Func<FunctionRoute> {
+  return Array.isArray(func.source);
 }
 
 export interface DefHeader {
