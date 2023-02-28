@@ -305,8 +305,10 @@ export class Parser {
   parse() {
     while (!this.tokens.empty) {
       if (this.tokens.nextIs({ value: 'use' })) this.parseUse();
-      const modifiers = this.getDefModifiers();
-      this.parseDef(modifiers);
+      else {
+        const modifiers = this.getDefModifiers();
+        this.parseDef(modifiers);
+      }
     }
   }
 }
