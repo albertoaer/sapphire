@@ -3,10 +3,13 @@ import { ModuleProvider, Generator } from './generator/generator.ts';
 import { Module, ModuleDescriptor, ModuleRoute } from "./sapp.ts";
 import { IOError } from './errors.ts';
 
+export const SAPP_FILE_EXTENSION = '.sa';
+
 export class FileSystemModuleProvider implements ModuleProvider {
   private assertFileRoute(parts: string[]): string {
     const partial = join(...parts);
-    const fileRoute = isAbsolute(partial) ? partial : join(Deno.cwd(), partial);
+    let fileRoute = (isAbsolute(partial) ? partial : join(Deno.cwd(), partial));
+    if (!fileRoute.endsWith(SAPP_FILE_EXTENSION)) fileRoute += SAPP_FILE_EXTENSION;
     try {
       if (!Deno.statSync(fileRoute).isFile) throw new IOError('Expecting file to import');
     } catch (_) {
