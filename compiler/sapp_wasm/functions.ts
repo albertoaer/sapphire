@@ -50,11 +50,6 @@ export class FunctionCollector {
   private useFunc(func: sapp.Func) {
     if (this.functions.has(func)) return;
 
-    if (func.dependsOn)
-      for (const x of func.dependsOn)
-        if (Array.isArray(x)) x.map(this.useFunc.bind(this));
-        else this.useFunc(x);
-
     if (sapp.isRefFunc(func)) {
       const injected = this.injector.getRef?.(func.source);
       if (injected === undefined) throw new CompilerError('Wasm', 'Cannot treat reference: ' + func.source);
@@ -67,6 +62,12 @@ export class FunctionCollector {
       this.functions.set(func, wfunc);
       this.defined.push(new FunctionBind(func as sapp.Func<sapp.Expression>, wfunc));
     }
+    
+    // Dependencies are processed after function to prevent loops
+    if (func.dependsOn)
+      for (const x of func.dependsOn)
+        if (Array.isArray(x)) x.map(this.useFunc.bind(this));
+        else this.useFunc(x);
   }
 
   populate(funcs: sapp.Func[]) {
