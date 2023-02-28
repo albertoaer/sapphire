@@ -284,6 +284,7 @@ export class Parser {
       else if (this.tokens.nextIs({ value: '[' })) functions.push(this.parseMethod());
       else if (this.tokens.nextIs({ value: 'struct' })) structs.push(this.parseStruct());
       else if (this.tokens.nextIs({ value: 'extends' })) extensions.push(this.parseExtend());
+      else if (!this.tokens.nextIs({ value: ';' })) this.tokens.unexpect();
       while (this.tokens.nextIs({ value: ';' }));
     }
     this.definitions.push({
