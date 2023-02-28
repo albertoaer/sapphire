@@ -21,26 +21,15 @@ export class Generator {
     this.kernel = kernel ?? undefined;
   }
 
-  private preventRepeatedName(globals: Map<string, sapp.GlobalObject>, name: string) {
-    if (globals.has(name))
-      throw new DependencyError(`Global ${name} declared twice`);
-  }
-
   private makeGlobals(dependencies: parser.Import[]): Map<string, sapp.GlobalObject> {
     const globals: Map<string, sapp.GlobalObject> = new Map();
     if (this.kernel)
       Object.entries(this.kernel.defs).forEach(([k,v]) => globals.set(k, v));
     for (const imp of dependencies) {
       const module = this.generateKnownModule(imp.route);
-      if (imp.mode === 'into') {
-        for (const [name, def] of Object.entries(module.defs)) {
-          this.preventRepeatedName(globals, name);
-          globals.set(name, def);
-        }
-      } else {
-        this.preventRepeatedName(globals, imp.name);
-        globals.set(imp.name, module);
-      }
+      if (imp.mode !== 'into') globals.set(imp.name, module);
+      else for (const [name, def] of Object.entries(module.defs))
+        globals.set(name, def);
     }
     return globals;
   }
