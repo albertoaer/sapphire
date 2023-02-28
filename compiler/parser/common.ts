@@ -103,6 +103,7 @@ export type Def = {
   structs: Struct[],
   functions: Func[],
   meta: ParserMeta,
+  extensions: ParserRoute[],
   exported: boolean,
   ensured: boolean
 }

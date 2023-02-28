@@ -248,6 +248,11 @@ export class Parser {
     return this.parseFunc(name, args);
   }
 
+  parseExtend(): ParserRoute {
+    const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
+    return { route: route, meta: { line: this.tokens.line } };
+  }
+
   parseUse() {
     const line = this.tokens.line;
     const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
@@ -267,20 +272,23 @@ export class Parser {
     const name = opname ? opname : this.tokens.expectNext({ type: 'identifier' }).value;
     const functions: Func[] = [];
     const structs: Struct[] = [];
+    const extensions: ParserRoute[] = [];
     while (!this.tokens.nextIs({ value: 'end' })) {
       while (this.tokens.nextIs({ value: ';' }));
-      let tk;
-      if ((tk = this.tokens.nextIs({ type: 'identifier' }))) {
+      const id = this.tokens.nextIs({ type: 'identifier' });
+      if (id) {
         this.tokens.expectNext({ value: '(' });
-        functions.push(this.parseFunc(tk.value));
+        functions.push(this.parseFunc(id.value));
       }
-      else if ((tk = this.tokens.nextIs({ value: '(' }))) functions.push(this.parseFunc(''));
-      else if ((tk = this.tokens.nextIs({ value: '[' }))) functions.push(this.parseMethod());
-      else if ((tk = this.tokens.nextIs({ value: 'struct' }))) structs.push(this.parseStruct());
+      else if (this.tokens.nextIs({ value: '(' })) functions.push(this.parseFunc(''));
+      else if (this.tokens.nextIs({ value: '[' })) functions.push(this.parseMethod());
+      else if (this.tokens.nextIs({ value: 'struct' })) structs.push(this.parseStruct());
+      else if (this.tokens.nextIs({ value: 'extends' })) extensions.push(this.parseExtend());
       while (this.tokens.nextIs({ value: ';' }));
     }
     this.definitions.push({
-      name, structs, functions, meta: { line }, exported: mods.has('export'), ensured: mods.has('ensured')
+      name, structs, functions, meta: { line }, extensions,
+      exported: mods.has('export'), ensured: mods.has('ensured')
     });
   }
 
