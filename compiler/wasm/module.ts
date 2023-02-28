@@ -49,7 +49,11 @@ export class WasmFunction {
     locals: WasmType[]
   } | null = null;
 
-  constructor(public readonly funcIdx: number, public readonly typeIdx: number) { }
+  constructor(
+    private readonly relFuncIdx: number, 
+    private readonly importLength: () => number,
+    public readonly typeIdx: number
+  ) { }
   
   set body(data: { code: Uint8Array | WasmExpression, locals?: WasmType[] } | Uint8Array | WasmExpression) {
     if (this._body) throw new CompilerError('Wasm', 'Trying to set body twice to a function');
@@ -68,6 +72,12 @@ export class WasmFunction {
   get completed(): boolean {
     return !!this._body;
   }
+
+  get funcIdx(): number {
+    const idx = this.relFuncIdx + this.importLength();
+    Object.defineProperty(this, 'funcIdx', { get: () => idx });
+    return idx;
+  }
 }
 
 export type WasmImport = {
@@ -77,7 +87,7 @@ export type WasmImport = {
 }
 
 export type WasmExport = {
-  readonly funcIdx: number,
+  readonly func: number | WasmFunction,
   readonly name: string
 }
 
@@ -109,7 +119,7 @@ export class WasmModule {
   private readonly tables: WasmTable[] = [];
   private readonly elems: WasmElem[] = [];
   private memoryConfig?: WasmMemoryConfig;
-  private mainFunction: number | undefined;
+  private mainFunction: WasmFunction | undefined;
   private lockedImports = false;
 
   constructor() { }
@@ -199,9 +209,11 @@ export class WasmModule {
   
   private getExports(): number[] {
     if (!this.exports) return [];
-    const exports = this.exports.map(
-      x => [...encodeString(x.name), WasmExportIndex.Function, ...unsignedLEB128(x.funcIdx)]
-    );
+    const exports = this.exports.map(x => [
+      ...encodeString(x.name),
+      WasmExportIndex.Function,
+      ...unsignedLEB128(typeof x.func === 'number' ? x.func : x.func.funcIdx)
+    ]);
     if (this.memoryConfig?.exportAs)
       exports.push([...encodeString(this.memoryConfig.exportAs), WasmExportIndex.Memory, 0])
     return section(WasmSection.Export, encodeVector(exports));
@@ -209,36 +221,38 @@ export class WasmModule {
 
   private getStart(): number[] {
     if (this.mainFunction === undefined) return [];
-    return section(WasmSection.Start, [this.mainFunction]);
+    return section(WasmSection.Start, [this.mainFunction.funcIdx]);
+  }
+
+  private importsLength(): number {
+    this.lockedImports = true;
+    return this.imports.length;
   }
 
   import(mod: string, name: string, input: WasmType[], output: WasmType[]): number {
-    if (this.lockedImports) throw new CompilerError('Wasm', 'Imports are locked after definitions');
+    if (this.lockedImports) throw new CompilerError('Wasm', 'Imports are already locked');
     const typeIdx = this.generateType({ input, output });
-    this.imports.push({ mod, name, typeIdx });
-    return typeIdx;
+    return this.imports.push({ mod, name, typeIdx }) - 1;
   }
 
   define(
     input: WasmType[], output: WasmType[], options?: { main?: boolean, export?: string }
   ): WasmFunction {
     const typeIdx = this.generateType({ input, output });
-    const funcIdx = this.imports.length + this.functions.length;
-    const func: WasmFunction = new WasmFunction(funcIdx, typeIdx);
+    const func = new WasmFunction(this.functions.length, this.importsLength.bind(this), typeIdx);
     this.functions.push(func);
     if (options) {
       if (options.main) {
-        if (this.mainFunction === undefined) this.mainFunction = funcIdx;
+        if (this.mainFunction === undefined) this.mainFunction = func;
         else throw new CompilerError('Wasm', 'There is already a main function');
       }
-      if (options.export) this.exports.push({ funcIdx, name: options.export });
+      if (options.export) this.exports.push({ func, name: options.export });
     }
-    this.lockedImports = true;
     return func;
   }
 
   export(name: string, funcIdx: number) {
-    this.exports.push({ name, funcIdx });
+    this.exports.push({ name, func: funcIdx });
   }
 
   table(functions: number[]): number {
