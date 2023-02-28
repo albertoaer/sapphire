@@ -27,5 +27,6 @@ export type RawCodeSpec = {
 }
 
 export interface FunctionInjector {
-  get(ref: sapp.FunctionReference): ResolvedFunction | undefined;
+  getRef?(ref: sapp.FunctionReference): ResolvedFunction | undefined;
+  getRoute?(route: sapp.FunctionRoute): ResolvedFunction | undefined;
 }

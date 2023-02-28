@@ -1,9 +1,9 @@
-import { wasm, sapp } from './common.ts';
+import { wasm } from './common.ts';
 import { Generator, ModuleProvider } from '../generator/generator.ts';
 import { Kernel } from './env/kernel.ts';
 import type { Compiler } from '../compiler.ts';
 import { ExpressionCompiler } from './expression.ts';
-import { FunctionManager } from './functions.ts';
+import { FunctionCollector } from './functions.ts';
 import { EnvironmentInjector } from './env/mod.ts';
 import { CompilerError } from '../errors.ts';
 
@@ -15,21 +15,25 @@ export class WasmCompiler implements Compiler {
     const generated = generator.generateKnownModule([file]);
     const module = new wasm.WasmModule();
     const injector = new EnvironmentInjector();
-    const manager = new FunctionManager(module, injector);
-    for (const def of Object.values(generated.defs))
-      manager.insertDef(def);
-    for (const func of manager)
-      if (!sapp.isFunctionReference(func.source)) {
+    const collector = new FunctionCollector(module, injector);
+    for (const def of Object.values(generated.defs)) {
+      collector.populate(Object.values(def.funcs).flat());
+      collector.populate(Object.values(def.instanceFuncs).flat(2));
+    }
+    const manager = collector.manager;
+
+    for (const func of collector)
+      func.build(source => {
         const expr = new ExpressionCompiler(manager);
-        expr.submit(func.source);
-        manager.setBody(func, expr.expression.code);
-      }
+        expr.submit(source);
+        return expr.expression.code;
+      });
     for (const def of generated.exports) {
       for (const [name, func] of Object.entries(def.funcs)) {
         for (let i = 0; i < func.length; i++) {
-          const wfunc = manager.getFunc(func[i]);
-          if (!wfunc) throw new CompilerError('Wasm', 'Trying to export invalid function');
-          module.export(`${def.name}${name ? '_' + name : ''}${i}`, wfunc.funcIdx);
+          const exported = manager.useFunc(func[i]);
+          if (typeof exported !== 'number') throw new CompilerError('Wasm', 'Exports must be pure functions');
+          module.export(`${def.name}${name ? '_' + name : ''}${i}`, exported);
         }
       }
     }
