@@ -22,6 +22,11 @@ if (flags.output) {
 }
 
 if (flags.call) {
-  const { instance } = await WebAssembly.instantiate(code);
-  console.log((instance.exports[flags.call] as CallableFunction)(...flags.args));
+  const { instance } = await WebAssembly.instantiate(code, window as unknown as WebAssembly.Imports);
+  const fn = instance.exports[flags.call] as CallableFunction | undefined;
+  if (!fn) {
+    console.log('Targeted function does not exists');
+    Deno.exit(-1);
+  }
+  console.log(fn(...flags.args));
 }
