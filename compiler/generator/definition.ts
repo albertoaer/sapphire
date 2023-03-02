@@ -137,24 +137,16 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
     });
   }
 
-  private createDef(): sapp.Def {
-    const funcs = new Map(Array.from(this.functions.entries(), (
-      ([n, f]) => [n, f.map(f => f.func)]
-    )));
-    const instanceFuncs = new Map(Array.from(this.instanceFunctions.entries(), (
-      ([n, f]) => [n, f.map(f => f.functions)]
-    )));
-    return {
-      ...this.header, instanceOverloads: this.structs.length, funcs, instanceFuncs
-    }
-  }
-
   build(): sapp.Def {
-    if (this.generated === undefined) {
+    if (!this.generated) {
+      const funcs = new Map();
+      const instanceFuncs = new Map();
+      this.generated = { ...this.header, funcs, instanceFuncs, instanceOverloads: this.def.structs.length };
       this.def.extensions.forEach(this.extendDef);
       this.def.structs.forEach(this.generateStruct);
       this.def.functions.forEach(this.generateFunction);
-      this.generated = this.createDef();
+      this.functions.forEach((f, n) => funcs.set(n, f.map(f => f.func)));
+      this.instanceFunctions.forEach((f, n) => instanceFuncs.set(n, f.map(f => f.functions)));
     }
     return this.generated;
   }
