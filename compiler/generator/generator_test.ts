@@ -24,29 +24,29 @@ const greater: Func = {
 
 generator.overwriteKernel({
   route: 'kernel:test',
-  defs: {
-    '+': {
+  defs: new Map([
+    ['+', {
       name: '+',
       route: 'kernel:test',
       instanceOverloads: 0,
-      funcs: { '': [add] },
-      instanceFuncs: {}
-    },
-    '*': {
+      funcs: new Map([['', [add]]]),
+      instanceFuncs: new Map()
+    }],
+    ['*', {
       name: '*',
       route: 'kernel:test',
       instanceOverloads: 0,
-      funcs: { '': [mult] },
-      instanceFuncs: {}
-    },
-    '>': {
+      funcs: new Map([['', [mult]]]),
+      instanceFuncs: new Map()
+    }],
+    ['>', {
       name: '>',
       route: 'kernel:test',
       instanceOverloads: 0,
-      funcs: { '': [greater] },
-      instanceFuncs: {}
-    }
-  },
+      funcs: new Map([['', [greater]]]),
+      instanceFuncs: new Map()
+    }]
+  ]),
   exports: []
 })
 

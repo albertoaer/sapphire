@@ -1,16 +1,17 @@
 import {
-  sapp, parser, ModuleResolutionEnv, FetchedInstanceFunc, DefinitionResolutionEnv, DefinitionBuilder
+  sapp, parser, ModuleEnv, FetchedInstanceFunc, DefinitionEnv,
+  DefinitionBuilder, FunctionBuilder, NameRoute
 } from './common.ts';
 import { FunctionGenerator } from './function.ts';
 import { FeatureError, ParserError } from '../errors.ts';
 
 class InstanceFunction {
   // Each index is a struct
-  private readonly functionsByStruct: (FunctionGenerator | undefined)[];
+  private readonly functionsByStruct: (FunctionBuilder | undefined)[];
   private refLine: number;
   private firstIdx: number;
 
-  constructor(first: { pre: parser.Func, func: FunctionGenerator, structIdx: number }, total: number) {
+  constructor(first: { pre: parser.Func, func: FunctionBuilder, structIdx: number }, total: number) {
     this.functionsByStruct = new Array(total);
     this.refLine = first.pre.meta.line;
     this.push(first.pre, first.func, first.structIdx);
@@ -18,10 +19,10 @@ class InstanceFunction {
   }
 
   signature(): sapp.Type[] {
-    return (this.functionsByStruct[this.firstIdx] as FunctionGenerator).inputs;
+    return (this.functionsByStruct[this.firstIdx] as FunctionBuilder).inputs;
   }
 
-  push(pre: parser.Func, func: FunctionGenerator, structIdx: number) {
+  push(pre: parser.Func, func: FunctionBuilder, structIdx: number) {
     if (this.functionsByStruct[structIdx] !== undefined)
       throw new ParserError(pre.meta.line, 'Repeated function signature');
     this.functionsByStruct[structIdx] = func;
@@ -38,12 +39,12 @@ class InstanceFunction {
   }
 }
 
-export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolutionEnv {
+export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuilder {
   private readonly structs: sapp.Type[][] = [];
   
   // Functions under a name always have different input signature
-  private readonly functions: { [name in string]: FunctionGenerator[] } = {};
-  private readonly instanceFunctions: { [name in string]: InstanceFunction[] } = {};
+  private readonly functions: Map<string, FunctionBuilder[]> = new Map();
+  private readonly instanceFunctions: Map<string, InstanceFunction[]> = new Map();
 
   public readonly self: sapp.Type;
   
@@ -51,10 +52,15 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
 
   constructor(
     public readonly header: sapp.DefHeader,
-    private readonly env: ModuleResolutionEnv,
+    private readonly env: ModuleEnv,
     private readonly def: parser.Def
   ) {
+    super();
     this.self = new sapp.Type(header);
+  }
+
+  fetchDef(name: NameRoute): sapp.Def {
+    return this.env.fetchDef(name);
   }
 
   structFor(types: sapp.Type[]): number | undefined {
@@ -62,32 +68,29 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
     return idx < 0 ? undefined : idx;
   }
 
-  resolveType(raw: parser.Type): sapp.Type {
-    return this.env.resolveType(raw);
-  }
-
-  fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
-    const name = route.route[0] ?? ''; // Empty name method if no name provided
-    const funcArr = this.functions[name];
-    if (funcArr !== undefined) {
+  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
+    const id = name.isNext ? name.next : '';
+    const funcArr = this.functions.get(id); // Empty name method if no name provided
+    if (funcArr) {
       const func = funcArr.find(x => sapp.typeArrayEquals(x.inputs, inputSignature));
-      if (func === undefined)
-        throw new ParserError(route.meta.line, `Invalid signature for function ${this.def.name}.${name}(...)`)
-      if (route.route[1]) throw new FeatureError(route.meta.line, 'Function Attributes');
+      if (!func)
+        throw new ParserError(name.line, `Invalid signature for function ${this.def.name}.${name}(...)`)
+      if (name.isNext) throw new FeatureError(name.line, 'Function Attributes');
       return func.func;
     }
-    return this.env.fetchFunc(route, inputSignature);
+    if (id) name.discardOne();
+    return this.env.fetchFunc(name, inputSignature);
   }
 
-  private generateStruct(pre: parser.Struct) {
-    const struct: sapp.Type[] = pre.types.map(x => this.env.resolveType(x));
+  private generateStruct = (pre: parser.Struct) => {
+    const struct: sapp.Type[] = pre.types.map(x => this.resolveType(x));
     if (this.structs.find(x => sapp.typeArrayEquals(x, struct)))
       throw new ParserError(pre.meta.line, 'Repeated struct');
     this.structs.push(struct);
   }
 
   private resolveStructIndex(heuristic: parser.HeuristicList, line: number): number {
-    const types = heuristic.map(x => x.type ? this.env.resolveType(x.type) : null);
+    const types = heuristic.map(x => x.type ? this.resolveType(x.type) : null);
     const factible = this.structs.map((x, i) => [x, i]  as [sapp.Type[], number]).filter(
       ([x, _]) => x.length === heuristic.length
         && x.every((t, i) => types[i] === null || t.isEquals(types[i] as sapp.Type))
@@ -98,26 +101,28 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
   }
   
   private includeFunction(pre: parser.Func, func: FunctionGenerator) {
-    if (this.functions[pre.name] === undefined) this.functions[pre.name] = [];
-    if (this.functions[pre.name].find(
+    if (!this.functions.has(pre.name)) this.functions.set(pre.name, []);
+    if (this.functions.get(pre.name)!.find(
       x => sapp.typeArrayEquals(x.inputs, func.inputs)
     ))
       throw new ParserError(pre.meta.line, 'Repeated function signature');
-    this.functions[pre.name].push(func);
+    this.functions.get(pre.name)!.push(func);
   }
 
   private includeInstanceFunction(pre: parser.Func, func: FunctionGenerator, structIdx: number) {
-    if (this.instanceFunctions[pre.name] === undefined) this.instanceFunctions[pre.name] = [];
-    const idx = this.instanceFunctions[pre.name].findIndex(
+    if (!this.instanceFunctions.has(pre.name)) this.instanceFunctions.set(pre.name, []);
+    const idx = this.instanceFunctions.get(pre.name)!.findIndex(
       x => sapp.typeArrayEquals(x.signature(), func.inputs)
     );
-    if (idx >= 0) this.instanceFunctions[pre.name][idx].push(pre, func, structIdx);
-    else this.instanceFunctions[pre.name].push(new InstanceFunction({ pre, func, structIdx }, this.structs.length));
+    if (idx >= 0) this.instanceFunctions.get(pre.name)![idx].push(pre, func, structIdx);
+    else this.instanceFunctions.get(pre.name)!.push(new InstanceFunction(
+      { pre, func, structIdx }, this.structs.length)
+    );
   }
   
-  private generateFunction(pre: parser.Func) {
+  private generateFunction = (pre: parser.Func) => {
     const structIdx = pre.struct !== undefined ? this.resolveStructIndex(pre.struct, pre.meta.line) : undefined;
-    const output = pre.output ? this.env.resolveType(pre.output) : undefined;
+    const output = pre.output ? this.resolveType(pre.output) : undefined;
     const func = new FunctionGenerator(
       pre, this, output, structIdx !== undefined ? this.structs[structIdx] : undefined
     );
@@ -125,25 +130,30 @@ export class DefinitionGenerator implements DefinitionBuilder, DefinitionResolut
     else this.includeInstanceFunction(pre, func, structIdx);
   }
 
+  private extendDef = (route: parser.ParserRoute) => {
+    const def = this.env.fetchDef(new NameRoute(route));
+    def.funcs.forEach((v, k) => {
+      this.functions.set(k, v.map(v => { return { func: v, inputs: v.inputSignature }; }));
+    });
+  }
+
   private createDef(): sapp.Def {
-    const funcs = Object.fromEntries(Object.entries(this.functions).map(
+    const funcs = new Map(Array.from(this.functions.entries(), (
       ([n, f]) => [n, f.map(f => f.func)]
-    ));
-    const instanceFuncs = Object.fromEntries(Object.entries(this.instanceFunctions).map(
+    )));
+    const instanceFuncs = new Map(Array.from(this.instanceFunctions.entries(), (
       ([n, f]) => [n, f.map(f => f.functions)]
-    ));
+    )));
     return {
-      ...this.header,
-      instanceOverloads: this.structs.length,
-      funcs,
-      instanceFuncs
+      ...this.header, instanceOverloads: this.structs.length, funcs, instanceFuncs
     }
   }
 
   build(): sapp.Def {
     if (this.generated === undefined) {
-      this.def.structs.forEach(this.generateStruct.bind(this));
-      this.def.functions.forEach(this.generateFunction.bind(this));
+      this.def.extensions.forEach(this.extendDef);
+      this.def.structs.forEach(this.generateStruct);
+      this.def.functions.forEach(this.generateFunction);
       this.generated = this.createDef();
     }
     return this.generated;

@@ -16,9 +16,9 @@ export class WasmCompiler implements Compiler {
     const module = new wasm.WasmModule();
     const injector = new EnvironmentInjector();
     const collector = new FunctionCollector(module, injector);
-    for (const def of Object.values(generated.defs)) {
-      collector.populate(Object.values(def.funcs).flat());
-      collector.populate(Object.values(def.instanceFuncs).flat(2));
+    for (const def of generated.defs.values()) {
+      collector.populate(Array.from(def.funcs.values()).flat());
+      collector.populate(Array.from(def.instanceFuncs.values()).flat(2));
     }
     const manager = collector.manager;
 
@@ -29,7 +29,7 @@ export class WasmCompiler implements Compiler {
         return expr.expression.code;
       });
     for (const def of generated.exports) {
-      for (const [name, func] of Object.entries(def.funcs)) {
+      for (const [name, func] of def.funcs) {
         for (let i = 0; i < func.length; i++) {
           const exported = manager.useFunc(func[i]);
           if (typeof exported !== 'number') throw new CompilerError('Wasm', 'Exports must be pure functions');

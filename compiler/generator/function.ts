@@ -1,4 +1,6 @@
-import { parser, sapp, DefinitionResolutionEnv, FunctionResolutionEnv, FetchedInstanceFunc } from './common.ts';
+import {
+  parser, sapp, DefinitionEnv, FunctionEnv, FetchedInstanceFunc, FunctionBuilder, NameRoute
+} from './common.ts';
 import { ExpressionGenerator } from './expression.ts';
 import { ParserError } from '../errors.ts';
 
@@ -88,7 +90,7 @@ class Function implements sapp.Func {
   }
 }
 
-export class FunctionGenerator implements FunctionResolutionEnv {
+export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
   public readonly inputs: sapp.Type[];
   private readonly _expr: ExpressionGenerator;
   private readonly _func: Function;
@@ -99,17 +101,22 @@ export class FunctionGenerator implements FunctionResolutionEnv {
 
   constructor(
     func: parser.Func,
-    private readonly env: DefinitionResolutionEnv,
+    private readonly env: DefinitionEnv,
     output?: sapp.Type,
     struct?: sapp.Type[]
   ) {
+    super();
     if (!func.source) throw new ParserError(func.meta.line, 'Expecting function body');
-    const args = func.inputs.map(x => [x.name, env.resolveType(x.type)] as [string, sapp.Type]);
+    const args = func.inputs.map(x => [x.name, this.resolveType(x.type)] as [string, sapp.Type]);
     this.inputs = args.map(x => x[1]);
     this._prms = new Parameters(args);
     this._expr = new ExpressionGenerator(this, func.source, this._deps);
     this._func = new Function(this.inputs, func.meta, this._deps, output, struct);
     this._treated = false;
+  }
+
+  fetchDef(name: NameRoute): sapp.Def {
+    return this.env.fetchDef(name);
   }
 
   get self(): sapp.Type {
@@ -127,36 +134,33 @@ export class FunctionGenerator implements FunctionResolutionEnv {
     return result;
   }
 
-  private getNoThrow(name: string): sapp.Expression & { name: number; } | undefined {
+  private tryGet(name: string): sapp.Expression & { name: number; } | undefined {
     const local = this._lcls.get(name);
     if (local) return { id: 'local_get', name: local[0], type: local[1] };
     const param = this._prms.get(name);
     if (param) return { id: 'param_get', name: param[0], type: param[1] };
   }
 
-  getValue(name: parser.ParserRoute): sapp.Expression & { name: number; } {
-    if (name.route[0] === undefined) throw new ParserError(name.meta.line, 'Empty route');
-    const v = this.getNoThrow(name.route[0]);
+  getValue(name: NameRoute): sapp.Expression & { name: number; } {
+    const id = name.next;
+    const v = this.tryGet(id);
     if (v) {
-      if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property: ${name.route[1]}`);
+      if (name.isNext) throw new ParserError(name.line, `Cannot get property: ${name.next}`);
       return v;
     }
-    throw new ParserError(name.meta.line, `Symbol not found: ${name.route[0]}`);
+    throw new ParserError(name.line, `Symbol not found: ${id}`);
   }
 
-  setValue(name: parser.ParserRoute, tp: sapp.Type): number {
-    if (this.getNoThrow(name.route[0]))
-      throw new ParserError(name.meta.line, `Already assigned a value to: ${name.route[0]}`);
-    if (name.route[1] !== undefined) throw new ParserError(name.meta.line, `Cannot get property: ${name.route[1]}`);
-    return this._lcls.insert(name.route[0], tp);
-  }
-  
-  resolveType(raw: parser.Type): sapp.Type {
-    return this.env.resolveType(raw);
+  setValue(name: NameRoute, tp: sapp.Type): number {
+    const id = name.next;
+    if (this.tryGet(id))
+      throw new ParserError(name.line, `Already assigned a value to: ${id}`);
+    if (name.isNext) throw new ParserError(name.line, `Cannot get property: ${name.next}`);
+    return this._lcls.insert(id, tp);
   }
 
-  fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
-    return this.env.fetchFunc(route, inputSignature);
+  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
+    return this.env.fetchFunc(name, inputSignature);
   }
 
   generate() {

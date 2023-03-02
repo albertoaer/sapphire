@@ -145,14 +145,12 @@ export interface DefHeader {
 export interface Def extends DefHeader {
   readonly instanceOverloads: number;
 
-  readonly funcs: { [name in string]: Func[] };
-  readonly instanceFuncs: { [name in string]: Func[][] };
+  readonly funcs: Map<string, Func[]>;
+  readonly instanceFuncs: Map<string, Func[][]>;
 }
-
-export type GlobalObject = Module | Def
 
 export interface Module {
   readonly route: ModuleRoute;
-  readonly defs: { [name in string]: Def };
+  readonly defs: Map<string, Def>;
   readonly exports: Def[];
 }

@@ -6,8 +6,8 @@ const route: sapp.Module['route'] = 'kernel:sapp_wasm';
 function funcToDef(name: string, funcs: sapp.Func[]): sapp.Def {
   return {
     route,
-    funcs: { '': funcs },
-    instanceFuncs: {},
+    funcs: new Map([['', funcs ]]),
+    instanceFuncs: new Map(),
     instanceOverloads: 0,
     name
   }
@@ -120,12 +120,12 @@ const rem: sapp.Func[] = [
 
 export const Kernel: sapp.Module = {
   route,
-  defs: {
-    '+': funcToDef('+', add),
-    '-': funcToDef('-', sub),
-    '*': funcToDef('*', mul),
-    '/': funcToDef('/', div),
-    '%': funcToDef('%', rem),
-  },
+  defs: new Map([
+    ['+', funcToDef('+', add)],
+    ['-', funcToDef('-', sub)],
+    ['*', funcToDef('*', mul)],
+    ['/', funcToDef('/', div)],
+    ['%', funcToDef('%', rem)],
+  ]),
   exports: [] as sapp.Def[]
 } as const;

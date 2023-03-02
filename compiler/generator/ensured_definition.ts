@@ -1,35 +1,34 @@
 import { FeatureError, ParserError } from '../errors.ts';
 import {
-  sapp, parser, ModuleResolutionEnv, FetchedInstanceFunc, DefinitionBuilder
+  sapp, parser, FetchedInstanceFunc, DefinitionBuilder, NameRoute, ModuleEnv
 } from './common.ts';
 
 export class EnsuredDefinitionGenerator implements DefinitionBuilder {
   public readonly self: sapp.Type;
-  private readonly functions: { [name in string]: sapp.Func[] };
+  private readonly functions: Map<string, sapp.Func[]> = new Map();
 
   private generated: sapp.Def | undefined = undefined;
   
   constructor(
     public readonly header: sapp.DefHeader,
-    private readonly env: ModuleResolutionEnv,
+    private readonly env: ModuleEnv,
     private readonly def: parser.Def
   ) {
     this.self = new sapp.Type(header);
     if (def.structs.length) throw new ParserError(def.meta.line, 'Ensured definitions must have no structs');
-    this.functions = {};
+    if (def.extensions.length) throw new ParserError(def.meta.line, 'Ensured definitions must have no extensions');
   }
   
-  fetchFunc(route: parser.ParserRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
-    const name = route.route[0] ?? ''; // Empty name method if no name provided
-    const funcArr = this.functions[name];
-    if (funcArr !== undefined) {
+  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
+    const funcArr = this.functions.get(name.isNext ? name.next : ''); // Empty name method if no name provided
+    if (funcArr) {
       const func = funcArr.find(x => sapp.typeArrayEquals(x.inputSignature, inputSignature));
-      if (func === undefined)
-        throw new ParserError(route.meta.line, `Invalid signature for function ${this.def.name}.${name}(...)`)
-      if (route.route[1]) throw new FeatureError(route.meta.line, 'Function Attributes');
+      if (!func)
+        throw new ParserError(name.line, `Invalid signature for function ${this.def.name}.${name}(...)`)
+      if (name.isNext) throw new FeatureError(name.line, 'Function Attributes');
       return func;
     }
-    return this.env.fetchFunc(route, inputSignature);
+    return this.env.fetchFunc(name, inputSignature);
   }
 
   private processFuncs(): EnsuredDefinitionGenerator['functions'] {
@@ -46,14 +45,14 @@ export class EnsuredDefinitionGenerator implements DefinitionBuilder {
       };
     }) satisfies sapp.Func[];
     for (const func of preparedFuncs) {
-      if (func.source[1] in this.functions) {
-        if (this.functions[func.source[1]].find(
+      if (this.functions.has(func.source[1])) {
+        if (this.functions.get(func.source[1])!.find(
           x => x.inputSignature.length === func.inputSignature.length &&
           x.inputSignature.every((t, i) => t.isEquals(func.inputSignature[i])))
         )
           throw new ParserError(func.meta.line, 'Repeated function signature');
-        this.functions[func.source[1]].push(func);
-      } else this.functions[func.source[1]] = [func];
+        this.functions.get(func.source[1])!.push(func);
+      } else this.functions.set(func.source[1], [func]);
     }
     return this.functions;
   }
@@ -62,7 +61,7 @@ export class EnsuredDefinitionGenerator implements DefinitionBuilder {
     if (!this.generated) this.generated = {
       ...this.header,
       funcs: this.processFuncs(),
-      instanceFuncs: {},
+      instanceFuncs: new Map(),
       instanceOverloads: 0
     }
     return this.generated;

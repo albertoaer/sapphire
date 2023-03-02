@@ -1,10 +1,11 @@
-import { sapp, parser, DefinitionBuilder, ModuleResolutionEnv } from './common.ts';
+import { sapp, parser, DefinitionBuilder, ModuleEnv } from './common.ts';
 import { Parser } from '../parser/parser.ts';
 import { TokenList } from '../parser/tokenizer.ts';
 import { ModuleGenerator } from "./module.ts";
 import { DependencyError } from '../errors.ts';
 import { DefinitionGenerator } from './definition.ts';
 import { EnsuredDefinitionGenerator } from './ensured_definition.ts';
+import { ModuleInspector, DefInspector } from './inspector.ts';
 
 export interface ModuleProvider {
   getRoute(descriptor: sapp.ModuleDescriptor): sapp.ModuleRoute;
@@ -21,15 +22,15 @@ export class Generator {
     this.kernel = kernel ?? undefined;
   }
 
-  private makeGlobals(dependencies: parser.Import[]): Map<string, sapp.GlobalObject> {
-    const globals: Map<string, sapp.GlobalObject> = new Map();
+  private makeGlobals(dependencies: parser.Import[]): Map<string, ModuleEnv> {
+    const globals: Map<string, ModuleEnv> = new Map();
     if (this.kernel)
-      Object.entries(this.kernel.defs).forEach(([k,v]) => globals.set(k, v));
+      this.kernel.defs.forEach((v,k) => globals.set(k, new DefInspector(v)));
     for (const imp of dependencies) {
       const module = this.generateKnownModule(imp.route);
-      if (imp.mode !== 'into') globals.set(imp.name, module);
-      else for (const [name, def] of Object.entries(module.defs))
-        globals.set(name, def);
+      if (imp.mode !== 'into') globals.set(imp.name, new ModuleInspector(module));
+      else for (const [name, def] of module.defs)
+        globals.set(name, new DefInspector(def));
     }
     return globals;
   }
@@ -48,7 +49,7 @@ export class Generator {
   }
 
   private definitionBuilderFor(
-    header: sapp.DefHeader, env: ModuleResolutionEnv, def: Parser['definitions'][number]
+    header: sapp.DefHeader, env: ModuleEnv, def: Parser['definitions'][number]
   ): DefinitionBuilder {
     if (def.ensured) return new EnsuredDefinitionGenerator(header, env, def);
     else return new DefinitionGenerator(header, env, def);

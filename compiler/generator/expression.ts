@@ -1,25 +1,25 @@
-import { sapp, parser, FunctionResolutionEnv, basicInferLiteral } from './common.ts';
+import { sapp, parser, FunctionEnv, basicInferLiteral, NameRoute } from './common.ts';
 import { ParserError, FeatureError, MatchTypeError } from "../errors.ts";
 
 export class ExpressionGenerator {
   private processed: sapp.Expression | null = null;
 
   constructor(
-    private readonly env: FunctionResolutionEnv,
+    private readonly env: FunctionEnv,
     private readonly expression: parser.Expression,
     private readonly dependencyPool: Set<sapp.Func | sapp.Func[]>
   ) {}
 
   private processAssign(ex: parser.Expression & { id: 'assign' }): sapp.Expression {
     const val = this.processEx(ex.value);
-    const name = this.env.setValue(ex.name, val.type);
+    const name = this.env.setValue(new NameRoute(ex.name), val.type);
     return { id: 'local_set', name, value: val, type: sapp.Void };
   }
 
   private processCall(ex: parser.Expression & { id: 'call' }): sapp.Expression {
     if (!('route' in ex.func)) throw new FeatureError(ex.meta.line, 'Call Returned Function');
     const args = ex.args.map(x => this.processEx(x));
-    const func = this.env.fetchFunc(ex.func, args.map(x => x.type));
+    const func = this.env.fetchFunc(new NameRoute(ex.func), args.map(x => x.type));
     this.dependencyPool.add('owner' in func ? func.funcGroup : func);
     return 'owner' in func
       ? { id: 'call_instanced', args, func: func.funcGroup, owner: func.owner, type: func.funcGroup[0].outputSignature } 
@@ -65,7 +65,7 @@ export class ExpressionGenerator {
   }
 
   private processValue({ name }: parser.Expression & { id: 'value' }): sapp.Expression {
-    return this.env.getValue(name);
+    return this.env.getValue(new NameRoute(name));
   }
 
   private processBuild({ args, meta }: parser.Expression & { id: 'build' }): sapp.Expression {
