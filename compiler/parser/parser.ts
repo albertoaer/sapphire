@@ -25,15 +25,16 @@ export class Parser {
   }
 
   tryParseLiteral(): Literal | undefined {
-    const tk =
-      this.tokens.nextIs({ type: 'string' }) ??
-      this.tokens.nextIs({ type: 'float' }) ??
-      this.tokens.nextIs({ type: 'int' }) ??
-      this.tokens.nextIs({ value: 'true' }) ??
-      this.tokens.nextIs({ value: 'false' });
-    if (tk) {
-      const type = tk.type === 'keyword' ? 'bool' : tk.type;
-      return { type: type as Literal['type'], value: tk.value, meta: { line: this.tokens.line } };
+    const boolV = this.tokens.nextIs({ value: 'true' }) ?? this.tokens.nextIs({ value: 'false' });
+    if (boolV) return { type: 'bool', value: boolV.value, meta: { line: this.tokens.line } };
+    const stringV = this.tokens.nextIs({ type: 'string' });
+    if (stringV) return { type: 'string', value: stringV.value, meta: { line: this.tokens.line } };
+    const numberV = this.tokens.nextIs({ type: 'float' }) ?? this.tokens.nextIs({ type: 'int' });
+    if (numberV) {
+      const type: Literal['type'] = this.tokens.nextIs({ value: '^' }) ?
+        (numberV.type === 'int' ? 'i64' : 'f64') :
+        (numberV.type === 'int' ? 'i32' : 'f32'); 
+      return { type, value: numberV.value, meta: { line: this.tokens.line } };
     }
   }
 

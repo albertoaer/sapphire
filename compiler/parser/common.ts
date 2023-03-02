@@ -7,7 +7,7 @@ export type ParserRoute = {
 
 export type Literal = {
   readonly value: string,
-  readonly type: 'string' | 'bool' | 'int' | 'float',
+  readonly type: 'string' | 'bool' | 'i32' | 'i64' | 'f32' | 'f64',
   readonly meta: ParserMeta
 }
 
@@ -33,7 +33,7 @@ export type Func = {
   readonly name: string,
   readonly inputs: ArgList,
   readonly output?: Type,
-  readonly struct?: HeuristicList
+  readonly struct?: HeuristicList,
   readonly source?: Expression,
   readonly meta: ParserMeta
 }

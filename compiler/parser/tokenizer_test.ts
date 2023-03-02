@@ -37,12 +37,13 @@ Deno.test("tokens", () => {
     { line: 1, type: 'identifier', value: 'definition' }
   ]);
 
-  assertEquals(tk.getTokens("desc..1.2.2 4..5"), [
+  assertEquals(tk.getTokens("desc..1.2.2^ 4..5"), [
     { line: 1, type: 'identifier', value: 'desc' },
     { line: 1, type: 'keyword', value: '.' },
     { line: 1, type: 'float', value: '.1' },
     { line: 1, type: 'float', value: '.2' },
     { line: 1, type: 'float', value: '.2' },
+    { line: 1, type: 'keyword', value: '^' },
     { line: 1, type: 'float', value: '4.' },
     { line: 1, type: 'float', value: '.5' }
   ]);

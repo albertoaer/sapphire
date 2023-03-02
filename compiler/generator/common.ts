@@ -47,10 +47,7 @@ export type FetchedInstanceFunc = {
 export abstract class ModuleEnv {
   resolveType(tp: parser.Type): sapp.Type {
     const array = tp.array ? (tp.array.size ?? sapp.ArraySizeAuto) : undefined;
-    if ('type' in tp.base)
-      return new sapp.Type({
-        'string': sapp.String, 'bool': sapp.Bool, 'int': sapp.I32, 'float': sapp.F32
-      }[tp.base.type].base, array);
+    if ('type' in tp.base) return new sapp.Type(tp.base.type, array);
     
     if (Array.isArray(tp.base)) return new sapp.Type(tp.base.map(x => this.resolveType(x)), array);
   
@@ -92,18 +89,4 @@ export abstract class FunctionEnv extends DefinitionEnv {
   abstract setValue(name: NameRoute, tp: sapp.Type): number;
 
   abstract scoped<T>(action: () => T): T;
-}
-
-/**
- * Utility function, It assumes int as i32 and float as f64
- * @param literal the parsed literal
- * @returns the generated valid literal
- */
-export function basicInferLiteral({ value, type }: parser.Literal): sapp.Literal {
-  return { value, type: ({
-    'bool': 'bool',
-    'string': 'string',
-    'int': 'i32',
-    'float': 'f64'
-  } as const)[type] };
 }

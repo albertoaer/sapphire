@@ -39,7 +39,7 @@ Deno.test('must parse', () => {
         id: 'call', func: { route: ['a', 'b'], meta }, meta,
         args: [
           { id: 'value', name: { route: ['f', 'g'], meta }, meta},
-          { id: 'literal', meta, value: { type: 'int', value: '3', meta } }
+          { id: 'literal', meta, value: { type: 'i32', value: '3', meta } }
         ]
       },
       { id: 'none', meta }
@@ -53,13 +53,13 @@ Deno.test('must parse', () => {
       ], meta },
       { id: 'none', meta }
   ], meta });
-  assertEquals(parserFor('2 + if smt.fn() then 1 else 0 end').parseExpression(), {
+  assertEquals(parserFor('2 + if smt.fn() then 1^ else 0^ end').parseExpression(), {
     id: 'call', func: { route: ['+'], meta }, args: [
-      { id: 'literal', value: { type: 'int', value: '2', meta }, meta },
+      { id: 'literal', value: { type: 'i32', value: '2', meta }, meta },
       { id: 'if', meta,
         cond: { id: 'call', func: { route: ['smt', 'fn'], meta }, args: [], meta },
-        then: { id: 'literal', meta, value: { type: 'int', value: '1', meta } },
-        else: { id: 'literal', meta, value: { type: 'int', value: '0', meta } }
+        then: { id: 'literal', meta, value: { type: 'i64', value: '1', meta } },
+        else: { id: 'literal', meta, value: { type: 'i64', value: '0', meta } }
       }
   ], meta });
   assertEquals(parserFor('if a then b else if c then d else e end').parseExpression(), {
@@ -77,17 +77,17 @@ Deno.test('must parse', () => {
     id: 'get', name: { route: ['x', 'y'], meta }, meta, origin: {
       id: 'index', meta, origin: { id: 'value', name: { route: ['a', 'c'], meta }, meta }, args: [
         { id: 'call', func: { route: ['b', 'c'], meta }, args: [], meta },
-        { id: 'literal', value: { value: '2', type: 'int', meta }, meta },
+        { id: 'literal', value: { value: '2', type: 'i32', meta }, meta },
         { id: 'literal', value: { value: 'hello', type: 'string', meta }, meta }
       ]
     }
   });
-  assertEquals(parserFor('a = (4 * b.c)').parseExpression(), {
+  assertEquals(parserFor('a = (4.4^ * b.c)').parseExpression(), {
     id: 'assign', name: { meta, route: ['a'] },
     value: {
       id: 'call', func: { meta, route: ['*'] },
       args: [ 
-        { id: 'literal', value: { meta, type: 'int', value: '4' }, meta },
+        { id: 'literal', value: { meta, type: 'f64', value: '4.4' }, meta },
         { id: "value", name: { meta, route: ['b', 'c'] }, meta }
       ],
       meta
@@ -96,7 +96,7 @@ Deno.test('must parse', () => {
   assertEquals(parserFor('new[2] + new[smt()]').parseExpression(), {
     id: 'call', func: { meta, route: ['+'] },
     meta, args: [
-      { id: 'build', args: [ { id: 'literal', meta, value: { meta, type: 'int', value: '2' } } ], meta },
+      { id: 'build', args: [ { id: 'literal', meta, value: { meta, type: 'i32', value: '2' } } ], meta },
       { id: 'build', args: [ { id: 'call', meta, func: { meta, route: ['smt'] }, args: [] } ], meta },
     ]
   })

@@ -1,4 +1,4 @@
-import { sapp, parser, FunctionEnv, basicInferLiteral, NameRoute } from './common.ts';
+import { sapp, parser, FunctionEnv, NameRoute } from './common.ts';
 import { ParserError, FeatureError, MatchTypeError } from "../errors.ts";
 
 export class ExpressionGenerator {
@@ -60,8 +60,7 @@ export class ExpressionGenerator {
   }
   
   private processLiteral({ value }: parser.Expression & { id: 'literal' }): sapp.Expression {
-    const literal: sapp.Literal = basicInferLiteral(value);
-    return { id: 'literal', value: literal, type: new sapp.Type(literal.type) };
+    return { id: 'literal', value, type: new sapp.Type(value.type) };
   }
 
   private processValue({ name }: parser.Expression & { id: 'value' }): sapp.Expression {
