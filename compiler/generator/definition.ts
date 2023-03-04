@@ -102,14 +102,16 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
   
   private includeFunction(pre: parser.Func, func: FunctionGenerator) {
     if (!this.functions.has(pre.name)) this.functions.set(pre.name, []);
-    if (this.functions.get(pre.name)!.find(
-      x => sapp.typeArrayEquals(x.inputs, func.inputs)
-    ))
-      throw new ParserError(pre.meta.line, 'Repeated function signature');
+    const idx = this.functions.get(pre.name)!.findIndex(x => sapp.typeArrayEquals(x.inputs, func.inputs));
+    if (idx >= 0) {
+      if (pre.force) this.functions.get(pre.name)![idx] = func;
+      else throw new ParserError(pre.meta.line, 'Repeated function signature');
+    }
     this.functions.get(pre.name)!.push(func);
   }
 
   private includeInstanceFunction(pre: parser.Func, func: FunctionGenerator, structIdx: number) {
+    if (pre.force) throw new ParserError(pre.meta.line, 'Force cannot be applied to instance functions');
     if (!this.instanceFunctions.has(pre.name)) this.instanceFunctions.set(pre.name, []);
     const idx = this.instanceFunctions.get(pre.name)!.findIndex(
       x => sapp.typeArrayEquals(x.signature(), func.inputs)
