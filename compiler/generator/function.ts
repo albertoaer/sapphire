@@ -107,6 +107,7 @@ export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
   constructor(
     func: parser.Func,
     private readonly env: DefinitionEnv,
+    public readonly isPrivate: boolean,
     output?: sapp.Type,
     struct?: sapp.Type[]
   ) {

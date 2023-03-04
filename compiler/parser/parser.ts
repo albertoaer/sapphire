@@ -6,7 +6,7 @@ import { TokenList, TokenExpect, Token, Tokenizer, Keywords } from './tokenizer.
 
 export type ParserConfig = { tokens: TokenList } | { source: string }
 
-const DefModifiers = ['export', 'ensured'] satisfies (typeof Keywords[number])[];
+const DefModifiers = ['priv', 'export', 'ensured'] satisfies (typeof Keywords[number])[];
 const FuncModifiers = ['priv', 'force'] satisfies (typeof Keywords[number])[];
 
 export class Parser {
@@ -305,7 +305,7 @@ export class Parser {
     }
     this.definitions.push({
       name, structs, functions, meta: { line }, extensions,
-      exported: mods.has('export'), ensured: mods.has('ensured')
+      exported: mods.has('export'), ensured: mods.has('ensured'), private: mods.has('priv')
     });
   }
 

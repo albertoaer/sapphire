@@ -55,7 +55,7 @@ export class ModuleGenerator extends ModuleEnv {
     if (this.generated === undefined)
       this.generated = {
         route,
-        defs: new Map(Array.from(this.defs.entries(), ([n, d]) => {
+        defs: new Map(Array.from(this.defs.entries()).filter(([_, d]) => !d.isPrivate).map(([n, d]) => {
           this.processed.add(d);
           return [n, d.build()];
         })),

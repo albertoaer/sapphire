@@ -10,10 +10,15 @@ class InstanceFunction {
   private readonly functionsByStruct: (FunctionBuilder | undefined)[];
   private refLine: number;
   private firstIdx: number;
+  public readonly isPrivate: boolean;
 
-  constructor(first: { pre: parser.Func, func: FunctionBuilder, structIdx: number }, total: number) {
+  constructor(
+    first: { pre: parser.Func, func: FunctionBuilder, structIdx: number },
+    total: number
+  ) {
     this.functionsByStruct = new Array(total);
     this.refLine = first.pre.meta.line;
+    this.isPrivate = first.func.isPrivate;
     this.push(first.pre, first.func, first.structIdx);
     this.firstIdx = first.structIdx;
   }
@@ -23,6 +28,8 @@ class InstanceFunction {
   }
 
   push(pre: parser.Func, func: FunctionBuilder, structIdx: number) {
+    if (this.isPrivate !== func.isPrivate)
+      throw new ParserError(pre.meta.line, 'Protection level must be the same between instance functions');
     if (this.functionsByStruct[structIdx] !== undefined)
       throw new ParserError(pre.meta.line, 'Repeated function signature');
     this.functionsByStruct[structIdx] = func;
@@ -47,6 +54,7 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
   private readonly instanceFunctions: Map<string, InstanceFunction[]> = new Map();
 
   public readonly self: sapp.Type;
+  public readonly isPrivate: boolean;
   
   private generated: sapp.Def | undefined = undefined;
 
@@ -57,6 +65,7 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
   ) {
     super();
     this.self = new sapp.Type(header);
+    this.isPrivate = def.private;
   }
 
   fetchDef(name: NameRoute): sapp.Def {
@@ -118,15 +127,15 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
     );
     if (idx >= 0) this.instanceFunctions.get(pre.name)![idx].push(pre, func, structIdx);
     else this.instanceFunctions.get(pre.name)!.push(new InstanceFunction(
-      { pre, func, structIdx }, this.structs.length)
-    );
+      { pre, func, structIdx }, this.structs.length
+    ));
   }
   
   private generateFunction = (pre: parser.Func) => {
     const structIdx = pre.struct !== undefined ? this.resolveStructIndex(pre.struct, pre.meta.line) : undefined;
     const output = pre.output ? this.resolveType(pre.output) : undefined;
     const func = new FunctionGenerator(
-      pre, this, output, structIdx !== undefined ? this.structs[structIdx] : undefined
+      pre, this, pre.private, output, structIdx !== undefined ? this.structs[structIdx] : undefined
     );
     if (structIdx === undefined) this.includeFunction(pre, func)
     else this.includeInstanceFunction(pre, func, structIdx);
@@ -135,7 +144,7 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
   private extendDef = (route: parser.ParserRoute) => {
     const def = this.env.fetchDef(new NameRoute(route));
     def.funcs.forEach((v, k) => {
-      this.functions.set(k, v.map(v => { return { func: v, inputs: v.inputSignature }; }));
+      this.functions.set(k, v.map(v => { return { func: v, isPrivate: false, inputs: v.inputSignature }; }));
     });
   }
 
@@ -147,8 +156,12 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
       this.def.extensions.forEach(this.extendDef);
       this.def.structs.forEach(this.generateStruct);
       this.def.functions.forEach(this.generateFunction);
-      this.functions.forEach((f, n) => funcs.set(n, f.map(f => f.func)));
-      this.instanceFunctions.forEach((f, n) => instanceFuncs.set(n, f.map(f => f.functions)));
+      this.functions.forEach(
+        (f, n) => funcs.set(n, f.filter(f => !f.isPrivate).map(f => f.func))
+      );
+      this.instanceFunctions.forEach(
+        (f, n) => instanceFuncs.set(n, f.filter(f => !f.isPrivate).map(f => f.functions))
+      );
     }
     return this.generated;
   }

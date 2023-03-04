@@ -5,6 +5,7 @@ import {
 
 export class EnsuredDefinitionGenerator implements DefinitionBuilder {
   public readonly self: sapp.Type;
+  public readonly isPrivate: boolean;
   private readonly functions: Map<string, sapp.Func[]> = new Map();
 
   private generated: sapp.Def | undefined = undefined;
@@ -15,6 +16,7 @@ export class EnsuredDefinitionGenerator implements DefinitionBuilder {
     private readonly def: parser.Def
   ) {
     this.self = new sapp.Type(header);
+    this.isPrivate = def.private;
     if (def.structs.length) throw new ParserError(def.meta.line, 'Ensured definitions must have no structs');
     if (def.extensions.length) throw new ParserError(def.meta.line, 'Ensured definitions must have no extensions');
   }

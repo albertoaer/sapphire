@@ -30,12 +30,14 @@ export class NameRoute {
 
 export interface DefinitionBuilder {
   readonly self: sapp.Type;
+  readonly isPrivate: boolean;
   build(): sapp.Def;
   fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc;
 }
 
 export interface FunctionBuilder {
   readonly func: sapp.Func;
+  readonly isPrivate: boolean;
   readonly inputs: sapp.Type[];
 }
 

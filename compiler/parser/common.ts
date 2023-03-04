@@ -107,5 +107,6 @@ export type Def = {
   meta: ParserMeta,
   extensions: ParserRoute[],
   exported: boolean,
-  ensured: boolean
+  ensured: boolean,
+  private: boolean
 }
