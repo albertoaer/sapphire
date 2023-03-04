@@ -1,6 +1,6 @@
 import { assertThrows } from "https://deno.land/std@0.174.0/testing/asserts.ts";
 import { ParserError } from "../errors.ts";
-import { Module, Func, I32, Bool } from "../sapp.ts";
+import { Module, Func, I32, Bool, F64 } from "../sapp.ts";
 import { Generator } from './generator.ts'
 
 const generator = new Generator();
@@ -22,6 +22,17 @@ const greater: Func = {
   source: 2
 }
 
+const addf: Func = {
+  inputSignature: [F64, F64],
+  outputSignature: F64,
+  source: 0
+}
+
+const multf: Func = {
+  ...addf,
+  source: 1
+}
+
 generator.overwriteKernel({
   route: 'kernel:test',
   defs: new Map([
@@ -29,14 +40,14 @@ generator.overwriteKernel({
       name: '+',
       route: 'kernel:test',
       instanceOverloads: 0,
-      funcs: new Map([['', [add]]]),
+      funcs: new Map([['', [add, addf]]]),
       instanceFuncs: new Map()
     }],
     ['*', {
       name: '*',
       route: 'kernel:test',
       instanceOverloads: 0,
-      funcs: new Map([['', [mult]]]),
+      funcs: new Map([['', [mult, multf]]]),
       instanceFuncs: new Map()
     }],
     ['>', {
@@ -83,9 +94,13 @@ Deno.test('must generate, expression targeted', () => {
     end`,
     `def TestStructs
       struct i32;
-      struct f32;
+      struct f64;
       (i32 i): TestStructs new[i];
-      (f32 i): TestStructs new[i];
+      (f64 i): TestStructs new[i];
+      [i32 a] pow2(): TestStructs new[a * a];
+      [f64 a] pow2(): TestStructs new[a * a];
+      [i32 a] obj() this;
+      [f64 a] obj() this;
     end`,
     `ensured def Ensured
       hello(i32): string;

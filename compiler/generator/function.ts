@@ -11,6 +11,10 @@ export class Parameters {
     const i = this.params.findIndex(n => n[0] === name);
     if (i >= 0) return [i, this.params[i][1]];
   }
+
+  getByIndex(idx: number): sapp.Type {
+    return this.params[idx][1];
+  }
 }
 
 export class Locals {
@@ -95,6 +99,7 @@ export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
   private readonly _expr: ExpressionGenerator;
   private readonly _func: Function;
   private readonly _prms: Parameters;
+  private readonly _inst?: Parameters;
   private readonly _lcls: Locals = new Locals();
   private readonly _deps: Set<sapp.Func | sapp.Func[]> = new Set();
   private _treated: boolean;
@@ -107,7 +112,11 @@ export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
   ) {
     super();
     if (!func.source) throw new ParserError(func.meta.line, 'Expecting function body');
-    const args = func.inputs.map(x => [x.name, this.resolveType(x.type)] as [string, sapp.Type]);
+    const args = func.inputs.map(x => [x.name, this.resolveType(x.type)] as [string | null, sapp.Type]);
+    if (struct) {
+      args.unshift(['this', this.env.self]);
+      this._inst = new Parameters(struct.map((tp, i) => [func.struct![i].name, tp]));
+    }
     this.inputs = args.map(x => x[1]);
     this._prms = new Parameters(args);
     this._expr = new ExpressionGenerator(this, func.source, this._deps);
@@ -134,14 +143,26 @@ export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
     return result;
   }
 
-  private tryGet(name: string): sapp.Expression & { name: number; } | undefined {
+  instance(): sapp.Expression | undefined {
+    if (this._inst) {
+      const instance = this._prms.getByIndex(0);
+      return { id: 'local_get', name: 0, type: instance };
+    }
+  }
+
+  private tryGet(name: string): sapp.Expression | undefined {
     const local = this._lcls.get(name);
     if (local) return { id: 'local_get', name: local[0], type: local[1] };
     const param = this._prms.get(name);
     if (param) return { id: 'param_get', name: param[0], type: param[1] };
+    const instance = this.instance();
+    if (instance) {
+      const instp = this._inst!.get(name);
+      if (instp) return { id: 'struct_access', struct: instance, idx: instp[0], type: instp[1] };
+    }
   }
 
-  getValue(name: NameRoute): sapp.Expression & { name: number; } {
+  getValue(name: NameRoute): sapp.Expression {
     const id = name.next;
     const v = this.tryGet(id);
     if (v) {

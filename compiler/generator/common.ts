@@ -85,7 +85,7 @@ export abstract class DefinitionEnv extends ModuleEnv {
 }
 
 export abstract class FunctionEnv extends DefinitionEnv {
-  abstract getValue(name: NameRoute): sapp.Expression & { name: number };
+  abstract getValue(name: NameRoute): sapp.Expression;
   abstract setValue(name: NameRoute, tp: sapp.Type): number;
 
   abstract scoped<T>(action: () => T): T;
