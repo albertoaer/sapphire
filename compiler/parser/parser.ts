@@ -41,7 +41,10 @@ export class Parser {
   parseName(init: string): string[] {
     const route = [init];
     while (this.tokens.nextIs({ value: '.' }))
-      route.push(this.tokens.expectNext({ type: 'identifier' }).value);
+      route.push(
+        this.tokens.nextIs({ type: 'identifier' })?.value ??
+        this.tokens.expectNext({ type: 'operator' }).value
+      );
     return route;
   }
 
