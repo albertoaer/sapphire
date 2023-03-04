@@ -35,7 +35,9 @@ export type Func = {
   readonly output?: Type,
   readonly struct?: HeuristicList,
   readonly source?: Expression,
-  readonly meta: ParserMeta
+  readonly meta: ParserMeta,
+  readonly force: boolean,
+  readonly private: boolean
 }
 
 export type Struct = {
