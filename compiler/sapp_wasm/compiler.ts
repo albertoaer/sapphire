@@ -16,10 +16,9 @@ export class WasmCompiler implements Compiler {
     const module = new wasm.WasmModule();
     const injector = new EnvironmentInjector();
     const collector = new FunctionCollector(module, injector);
-    for (const def of generated.defs.values()) {
+    for (const def of generated.exports.values())
       collector.populate(Array.from(def.funcs.values()).flat());
-      collector.populate(Array.from(def.instanceFuncs.values()).flat(2));
-    }
+    
     const manager = collector.manager;
 
     for (const func of collector)
