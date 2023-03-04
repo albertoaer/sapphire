@@ -158,7 +158,7 @@ export class Parser {
         expr = { id: 'get', origin: expr, name: { route, meta: { line } }, meta: { line: this.tokens.line } };
       } else route = undefined;
     } while (callArgs !== undefined || indexArgs !== undefined || route !== undefined);
-    if (this.tokens.nextIs({ value: ':' })) {
+    while (this.tokens.nextIs({ value: ':' })) {
       const line = this.tokens.line
       const route = {
         route: this.parseName(this.tokens.expectNext({ type: 'identifier' }).value), meta: { line }
