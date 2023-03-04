@@ -1,4 +1,4 @@
-import { ParserError } from './common.ts';
+import { ParserError } from '../errors.ts';
 
 export type Token = {
   line: number,
@@ -7,13 +7,13 @@ export type Token = {
 }
 
 export const Keywords = [
-  'def', 'except', 'extend', 'open', 'use', 'it',
+  'def', 'except', 'extends', 'open', 'use', 'new',
   'if','then', 'else', 'end', 'struct', 'priv', 'as',
-  'into', 'this', 'ensured', 'implicit', 'true', 'false',
-  '(', ')', '[', ']', '{', '}', ';', ',', '.', ':', '_'
+  'into', 'ensured', 'force', 'true', 'false', 'export',
+  '(', ')', '[', ']', '{', '}', ';', ',', '.', ':', '_', '=', '^'
 ] as const
 
-export const OperatorList = '^*+-%&$/@!|=<>';
+export const OperatorList = '*+-%&$/@!|<>'
 
 const isOpChar = (c: string) => c.length == 1 && OperatorList.includes(c)
 
@@ -21,19 +21,20 @@ const isIdChar = (c: string) => c.length == 1 && c.match(/[a-z_]/i) != null
 
 const isNumChar = (c: string) => c.length == 1 && c.match(/[0-9]/) != null
 
-const isSpacer = (c: string) => c.length == 1 && '\n\t '.includes(c)
+const isSpacer = (c: string) => c.length == 1 && '\n\t\r '.includes(c)
 
-const isKeyword = (c: string) => (Keywords as readonly string[]).includes(c);
+const isKeyword = (c: string) => (Keywords as readonly string[]).includes(c)
 
 const commentMark = '#'
+const multiCommentModifier = '~'
 
-type tkStep = 'start' | 'comment' | { type: '.' } | {
+type tkStep = 'start' | 'inicomment' | 'comment' | 'multicomment' | { type: '.' } | {
   type: 'id' | 'str' | 'op' | 'num' | 'num.' | 'delim',
   value: string
 }
 
 function stepToToken(step: tkStep): Omit<Token, 'line'>[] {
-  if (step === 'start' || step === 'comment') return [];
+  if (step === 'start' || step === 'inicomment' ||step === 'comment' || step == 'multicomment') return [];
   if (step.type === '.') return [{ type: 'keyword', value: step.type }];
   if (step.type === 'id') return [{
     type: isKeyword(step.value) ? 'keyword' : 'identifier', value: step.value
@@ -57,7 +58,7 @@ function startOfTk(value: string): tkStep {
   if (value === '.') return { type: '.' };
   if (value === '"') return { value: '', type: 'str' };
   if (isSpacer(value)) return 'start';
-  if (value === commentMark) return 'comment';
+  if (value === commentMark) return 'inicomment';
   if (isKeyword(value)) return { value, type: 'delim' };
   throw new Error(`Unexpected ${value}`);
 }
@@ -68,7 +69,7 @@ function stringPush(value: string, c: string): [tkStep, Omit<Token, 'line'>[]] {
 }
 
 function transition(step: Extract<tkStep, { type: string }>, c: string): [tkStep, Omit<Token, 'line'>[]] {
-  if (c === commentMark) return ['comment', stepToToken(step)];
+  if (c === commentMark) return ['inicomment', stepToToken(step)];
   if (step.type === '.' && isNumChar(c)) return [{ value: step.type + c, type: 'num.' }, []];
   if (step.type === 'str') return stringPush(step.value, c);
   if (
@@ -84,7 +85,6 @@ function transition(step: Extract<tkStep, { type: string }>, c: string): [tkStep
   return [startOfTk(c), stepToToken(step)];
 }
 
-// TODO: Provide a configuration object to the tokenizer
 export class Tokenizer {
   getTokens(source: string): Token[] {
     let step: tkStep = 'start';
@@ -92,11 +92,13 @@ export class Tokenizer {
     const collected: Token[] = [];
     try {
       for (const c of source) {
-        if (step !== 'comment') {
+        if (step === 'inicomment') step = c === multiCommentModifier ? 'multicomment' : 'comment';
+        if (step !== 'comment' && step !== 'multicomment') {
           const ret: ReturnType<typeof transition> = step === 'start' ? [startOfTk(c), []] : transition(step, c);
           step = ret[0];
           collected.push(...ret[1].map(x => { return { line, ...x} }));
         }
+        if (step === 'multicomment' && c === commentMark) step = 'start';
         if (c === '\n') {
           line++;
           if (step === 'comment') step = 'start';
