@@ -83,7 +83,7 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
     if (funcArr) {
       const func = funcArr.find(x => sapp.typeArrayEquals(x.inputs, inputSignature));
       if (!func)
-        throw new ParserError(name.line, `Invalid signature for function ${this.def.name}.${name}(...)`)
+        throw new ParserError(name.line, `Invalid signature for function ${this.def.name}.${id}(...)`)
       if (name.isNext) throw new FeatureError(name.line, 'Function Attributes');
       return func.func;
     }
