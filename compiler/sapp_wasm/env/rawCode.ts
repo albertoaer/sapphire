@@ -23,4 +23,20 @@ export const RawInstructions: { [id: number]: number } = {
 
   [References.i32_rem]: 0x6F,
   [References.i64_rem]: 0x81,
+
+  [References.i32_to_i64]: 0xAC,
+  [References.i32_to_f32]: 0xB2,
+  [References.i32_to_f64]: 0xB7,
+
+  [References.i64_to_i32]: 0xA7,
+  [References.i64_to_f32]: 0xB4,
+  [References.i64_to_f64]: 0xB9,
+
+  [References.f32_to_i32]: 0xA8,
+  [References.f32_to_i64]: 0xAE,
+  [References.f32_to_f64]: 0xBB,
+
+  [References.f64_to_i32]: 0xAA,
+  [References.f64_to_i64]: 0xB0,
+  [References.f64_to_f32]: 0xB6
 }
