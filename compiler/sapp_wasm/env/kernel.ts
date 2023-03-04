@@ -3,14 +3,14 @@ import { References } from './constants.ts';
 
 const route: sapp.Module['route'] = 'kernel:sapp_wasm';
 
-function funcToDef(name: string, funcs: sapp.Func[]): sapp.Def {
-  return {
+function funcToDef(name: string, funcs: sapp.Func[]): [string, sapp.Def] {
+  return [name, {
     route,
     funcs: new Map([['', funcs ]]),
     instanceFuncs: new Map(),
     instanceOverloads: 0,
     name
-  }
+  }]
 }
 
 const add: sapp.Func[] = [
@@ -120,6 +120,11 @@ const rem: sapp.Func[] = [
 
 const i32: sapp.Func[] = [
   {
+    inputSignature: [sapp.Bool],
+    outputSignature: sapp.I32,
+    source: References.nop
+  },
+  {
     inputSignature: [sapp.I64],
     outputSignature: sapp.I32,
     source: References.i64_to_i32
@@ -137,6 +142,11 @@ const i32: sapp.Func[] = [
 ]
 
 const i64: sapp.Func[] = [
+  {
+    inputSignature: [sapp.Bool],
+    outputSignature: sapp.I64,
+    source: References.i32_to_i64
+  },
   {
     inputSignature: [sapp.I32],
     outputSignature: sapp.I64,
@@ -190,19 +200,34 @@ const f64: sapp.Func[] = [
   }
 ]
 
+const bool: sapp.Func[] = [
+  {
+    inputSignature: [sapp.I32],
+    outputSignature: sapp.Bool,
+    source: References.i32_nqz
+  },
+  {
+    inputSignature: [sapp.I64],
+    outputSignature: sapp.Bool,
+    source: References.i64_nqz
+  }
+]
+
 export const Kernel: sapp.Module = {
   route,
   defs: new Map([
-    ['+', funcToDef('+', add)],
-    ['-', funcToDef('-', sub)],
-    ['*', funcToDef('*', mul)],
-    ['/', funcToDef('/', div)],
-    ['%', funcToDef('%', rem)],
+    funcToDef('+', add),
+    funcToDef('-', sub),
+    funcToDef('*', mul),
+    funcToDef('/', div),
+    funcToDef('%', rem),
 
-    ['i32', funcToDef('i32', i32)],
-    ['i64', funcToDef('i64', i64)],
-    ['f32', funcToDef('f32', f32)],
-    ['f64', funcToDef('f64', f64)]
+    funcToDef('i32', i32),
+    funcToDef('i64', i64),
+    funcToDef('f32', f32),
+    funcToDef('f64', f64),
+    funcToDef('bool', bool),
+    funcToDef('!!', bool),
   ]),
   exports: [] as sapp.Def[]
 } as const;

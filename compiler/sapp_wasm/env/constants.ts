@@ -1,4 +1,6 @@
 export enum References {
+  nop,
+
   i32_add,
   i64_add,
   f32_add,
@@ -36,5 +38,8 @@ export enum References {
 
   f64_to_i32,
   f64_to_i64,
-  f64_to_f32
+  f64_to_f32,
+
+  i32_nqz,
+  i64_nqz,
 }
