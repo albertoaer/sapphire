@@ -24,8 +24,10 @@ export class Generator {
 
   private makeGlobals(dependencies: parser.Import[]): Map<string, ModuleEnv> {
     const globals: Map<string, ModuleEnv> = new Map();
-    if (this.kernel)
+    if (this.kernel) {
       this.kernel.defs.forEach((v,k) => globals.set(k, new DefInspector(v)));
+      globals.set('kernel', new ModuleInspector(this.kernel));
+    }
     for (const imp of dependencies) {
       const module = this.generateKnownModule(imp.route);
       if (imp.mode !== 'into') globals.set(imp.name, new ModuleInspector(module));
