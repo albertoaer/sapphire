@@ -1,4 +1,4 @@
-import { FeatureError, ParserError } from '../errors.ts';
+import { ParserError } from '../errors.ts';
 import {
   sapp, parser, FetchedInstanceFunc, DefinitionBuilder, NameRoute, ModuleEnv
 } from './common.ts';
@@ -26,8 +26,8 @@ export class EnsuredDefinitionGenerator implements DefinitionBuilder {
     if (funcArr) {
       const func = funcArr.find(x => sapp.typeArrayEquals(x.inputSignature, inputSignature));
       if (!func)
-        throw new ParserError(name.line, `Invalid signature for function ${this.def.name}.${name}(...)`)
-      if (name.isNext) throw new FeatureError(name.line, 'Function Attributes');
+        throw name.meta.error(`Invalid signature for function ${this.def.name}.${name}(...)`)
+      if (name.isNext) throw name.meta.error('Function Attributes');
       return func;
     }
     return this.env.fetchFunc(name, inputSignature);

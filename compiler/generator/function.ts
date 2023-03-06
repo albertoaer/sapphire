@@ -167,17 +167,17 @@ export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
     const id = name.next;
     const v = this.tryGet(id);
     if (v) {
-      if (name.isNext) throw new ParserError(name.line, `Cannot get property: ${name.next}`);
+      if (name.isNext) throw name.meta.error(`Cannot get property: ${name.next}`);
       return v;
     }
-    throw new ParserError(name.line, `Symbol not found: ${id}`);
+    throw name.meta.error(`Symbol not found: ${id}`);
   }
 
   setValue(name: NameRoute, tp: sapp.Type): number {
     const id = name.next;
     if (this.tryGet(id))
-      throw new ParserError(name.line, `Already assigned a value to: ${id}`);
-    if (name.isNext) throw new ParserError(name.line, `Cannot get property: ${name.next}`);
+      throw name.meta.error(`Already assigned a value to: ${id}`);
+    if (name.isNext) throw name.meta.error(`Cannot get property: ${name.next}`);
     return this._lcls.insert(id, tp);
   }
 

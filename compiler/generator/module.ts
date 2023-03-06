@@ -1,5 +1,4 @@
 import { ModuleEnv, sapp, FetchedInstanceFunc, DefinitionBuilder, NameRoute } from "./common.ts";
-import { ParserError } from "../errors.ts";
 
 export type DefConfig = { exported: boolean }
 
@@ -28,11 +27,11 @@ export class ModuleGenerator extends ModuleEnv {
     const id = name.next;
     const def = this.localDef(id);
     if (def) {
-      if (name.isNext) throw new ParserError(name.line, 'Trying to fetch def, no inner property');
+      if (name.isNext) throw name.meta.error('Trying to fetch def, no inner property');
       return def.build();
     }
     const global = this.globals.get(id);
-    if (!global) throw new ParserError(name.line, `Symbol not found: ${id}`);
+    if (!global) throw name.meta.error(`Symbol not found: ${id}`);
     return global.fetchDef(name);
   }
 
@@ -41,7 +40,7 @@ export class ModuleGenerator extends ModuleEnv {
     const def = this.localDef(id);
     if (def) return def.fetchFunc(name, inputSignature);
     const global = this.globals.get(id);
-    if (!global) throw new ParserError(name.line, `Symbol not found, ${id}`);
+    if (!global) throw name.meta.error(`Symbol not found, ${id}`);
     return global.fetchFunc(name, inputSignature);
   }
 

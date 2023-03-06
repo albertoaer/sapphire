@@ -1,8 +1,9 @@
 import { assertThrows, assertEquals } from "https://deno.land/std@0.174.0/testing/asserts.ts";
+import { ParserMeta } from "./common.ts";
 import { parserFor } from "./test_utils.ts";
 
 Deno.test('must parse', () => {
-  const meta = { line: 1 };
+  const meta = new ParserMeta(1);
 
   assertEquals(parserFor('int{4}').parseType(),
     { base: { route: ['int'], meta }, meta, array: { size: 4 } }
