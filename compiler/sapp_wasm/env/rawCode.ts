@@ -43,5 +43,8 @@ export const RawInstructions: { [id: number]: number[] } = {
   [References.f64_to_f32]: [0xB6],
 
   [References.i32_nqz]: [0x45, 0x45],
-  [References.i64_nqz]: [0x50, 0x50]
+  [References.i64_nqz]: [0x50, 0x50],
+
+  [References.f32_neg]: [0x8C],
+  [References.f64_neg]: [0x9A] 
 }

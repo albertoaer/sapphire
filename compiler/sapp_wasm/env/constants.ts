@@ -42,4 +42,9 @@ export enum References {
 
   i32_nqz,
   i64_nqz,
+
+  i32_neg,
+  i64_neg,
+  f32_neg,
+  f64_neg
 }
