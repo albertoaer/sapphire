@@ -1,6 +1,6 @@
 import { References } from './constants.ts';
 
-export const RawInstructions: { [id: number]: number[] } = {
+export const RawInstructions: { [id: number]: number[] | [number[], number[]] } = {
   [References.nop]: [],
 
   [References.i32_add]: [0x6A],
@@ -45,6 +45,8 @@ export const RawInstructions: { [id: number]: number[] } = {
   [References.i32_nqz]: [0x45, 0x45],
   [References.i64_nqz]: [0x50, 0x50],
 
+  [References.i32_neg]: [[0x41, 0], [0x6B]],
+  [References.i64_neg]: [[0x42, 0], [0x7D]],
   [References.f32_neg]: [0x8C],
-  [References.f64_neg]: [0x9A] 
+  [References.f64_neg]: [0x9A],
 }

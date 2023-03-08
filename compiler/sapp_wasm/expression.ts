@@ -17,8 +17,9 @@ export class ExpressionCompiler {
     const resolved = this.resolutor.useFunc(func);
     if (typeof resolved !== 'number') {
       const argsTransformed = resolved.reverseStack ? args.reverse() : args;
+      if (resolved.preCode) this.expression.pushRaw(...resolved.preCode);
       for (const arg of argsTransformed) this.expression.pushExpr(this.fastProcess(arg));
-      this.expression.pushRaw(...resolved.instruction);
+      if (resolved.postCode) this.expression.pushRaw(...resolved.postCode);
     } else {
       for (const arg of args) this.expression.pushExpr(this.fastProcess(arg));
       this.expression.pushRaw(0x10);
