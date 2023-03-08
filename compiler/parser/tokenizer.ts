@@ -105,6 +105,8 @@ export class Tokenizer {
           if (step === 'comment') step = 'start';
         }
       }
+      if (typeof step === 'object' && step.type === 'str')
+        throw new ParserError(line, 'Expected string to be closed');
       collected.push(...stepToToken(step).map(x => { return { line, ...x} }));
     } catch (e) {
       throw new ParserError(line, String(e));

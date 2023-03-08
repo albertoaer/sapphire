@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.174.0/testing/asserts.ts";
+import { assertEquals, assertThrows } from "https://deno.land/std@0.174.0/testing/asserts.ts";
 import { Tokenizer } from './tokenizer.ts';
 
 Deno.test("tokens", () => {
@@ -10,7 +10,7 @@ Deno.test("tokens", () => {
     { line: 1, type: 'float', value: '1.' }
   ]);
 
-  assertEquals(tk.getTokens("def hello(a) \"hello \"+a end"), [
+  assertEquals(tk.getTokens("def hello(a) \"hello \" +a end"), [
     { line: 1, type: 'keyword', value: 'def' },
     { line: 1, type: 'identifier', value: 'hello' },
     { line: 1, type: 'keyword', value: '(' },
@@ -71,7 +71,8 @@ Deno.test("tokens", () => {
   assertEquals(tk.getTokens(`
   x = true #~ + 
     45.6
-  #;{}
+  #;{}"hey
+  you"
   `), [
     { line: 2, type: 'identifier', value: 'x' },
     { line: 2, type: 'keyword', value: '=' },
@@ -79,5 +80,12 @@ Deno.test("tokens", () => {
     { line: 4, type: 'keyword', value: ';' },
     { line: 4, type: 'keyword', value: '{' },
     { line: 4, type: 'keyword', value: '}' },
+    { line: 5, type: 'string', value: 'hey\n  you' },
   ])
 });
+
+Deno.test("tokenization error", () => {
+  const tk = new Tokenizer();
+
+  assertThrows(() => tk.getTokens(`\"`))
+})
