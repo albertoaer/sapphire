@@ -37,7 +37,7 @@ export class ExpressionGenerator {
     if (cond_.type.base !== 'bool') throw new MatchTypeError(ex.meta.line, cond_.type, new sapp.Type('bool'));
     const then_ = this.processEx(ex.then);
     const else_ = this.processEx(ex.else);
-    if (!else_.type.isEquals(then_.type)) throw new MatchTypeError(ex.meta.line, else_.type, else_.type);
+    if (!else_.type.isEquals(then_.type)) throw new MatchTypeError(ex.meta.line, else_.type, then_.type);
     return { id: 'if', cond: cond_, else: else_, then: then_, type: then_.type };
   }
 
