@@ -2,7 +2,7 @@
 
 Experimental WebAssembly targeted programming language
 
-Sapphire parser is fully independent of the WASM compiler, ensuring new compilation targets in the future
+Sapphire parser is fully independent of the WASM compiler, allowing new compilation targets in the future
 
 ## Hello World
 
