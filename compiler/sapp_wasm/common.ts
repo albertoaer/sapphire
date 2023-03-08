@@ -19,12 +19,13 @@ export function convertToWasmType(orig: sapp.Type): wasm.WasmType {
   throw new CompilerError('Wasm', `Type not handled: ${orig.toString()}`)
 }
 
-export type ResolvedFunction = number | RawCodeSpec
-
 export type RawCodeSpec = {
-  reverseStack: boolean,
-  instruction: Uint8Array
+  reverseStack?: boolean,
+  postCode?: Uint8Array,
+  preCode?: Uint8Array
 }
+
+export type ResolvedFunction = number | RawCodeSpec
 
 export interface FunctionInjector {
   getRef?(ref: sapp.FunctionReference): ResolvedFunction | undefined;

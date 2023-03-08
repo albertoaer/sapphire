@@ -59,6 +59,29 @@ const sub: sapp.Func[] = [
   }
 ]
 
+const neg: sapp.Func[] = [
+  {
+    inputSignature: [sapp.I32],
+    outputSignature: sapp.I32,
+    source: References.i32_neg
+  },
+  {
+    inputSignature: [sapp.I64],
+    outputSignature: sapp.I64,
+    source: References.i64_neg
+  },
+  {
+    inputSignature: [sapp.F32],
+    outputSignature: sapp.F32,
+    source: References.f32_neg
+  },
+  {
+    inputSignature: [sapp.F64],
+    outputSignature: sapp.F64,
+    source: References.f64_neg
+  }
+]
+
 const mul: sapp.Func[] = [
   {
     inputSignature: [sapp.I32, sapp.I32],
@@ -217,7 +240,7 @@ export const Kernel: sapp.Module = {
   route,
   defs: new Map([
     funcToDef('+', add),
-    funcToDef('-', sub),
+    funcToDef('-', [...sub, ...neg]),
     funcToDef('*', mul),
     funcToDef('/', div),
     funcToDef('%', rem),
