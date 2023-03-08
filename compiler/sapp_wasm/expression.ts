@@ -1,14 +1,15 @@
 import { CompilerError, FeatureError } from '../errors.ts';
 import { sapp, wasm, convertToWasmType } from './common.ts';
 import type { FunctionResolutor } from './functions.ts';
+import { MemoryHelper } from './memory.ts';
 
 export class ExpressionCompiler {
   public readonly expression = new wasm.WasmExpression();
 
-  constructor(private readonly resolutor: FunctionResolutor) { }
+  constructor(private readonly resolutor: FunctionResolutor, private readonly memory: MemoryHelper) { }
 
   private fastProcess(ex: sapp.Expression): wasm.WasmExpression {
-    const comp = new ExpressionCompiler(this.resolutor);
+    const comp = new ExpressionCompiler(this.resolutor, this.memory);
     comp.submit(ex);
     return comp.expression;
   }
@@ -30,7 +31,7 @@ export class ExpressionCompiler {
   private processIf(ex: sapp.Expression & { id: 'if' }) {
     this.expression.pushIf(
       this.fastProcess(ex.cond),
-      convertToWasmType(ex.then.type),
+      ex.then.type.isVoid ? null : convertToWasmType(ex.then.type),
       this.fastProcess(ex.then),
       this.fastProcess(ex.else)
     );
@@ -70,6 +71,12 @@ export class ExpressionCompiler {
     this.expression.pushRaw(0x20, name);
   }
 
+  private allocateList(exprs: sapp.Expression[]) {
+    const sz = wasm.WasmTypeBytes[convertToWasmType(exprs[0].type)];
+    if (sz === undefined) throw new CompilerError('Wasm', 'Cannot compute undefined size');
+    this.expression.pushRaw(...this.memory.allocate(sz * exprs.length));
+  }
+
   submit(ex: sapp.Expression) {
     switch (ex.id) {
       case 'call': 
@@ -86,6 +93,9 @@ export class ExpressionCompiler {
         break;
       case 'param_get':
         this.paramGet(ex.name);
+        break;
+      case 'list_literal':
+        this.allocateList(ex.exprs);
         break;
       case 'none':
         break;

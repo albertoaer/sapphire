@@ -16,6 +16,8 @@ export function convertToWasmType(orig: sapp.Type): wasm.WasmType {
     case 'f64': return wasm.WasmType.F64;
     case 'void': throw new CompilerError('Wasm', 'Trying to represent void');
   }
+  if (typeof orig.base === 'object' && 'name' in orig.base)
+    return wasm.WasmType.I64;
   throw new CompilerError('Wasm', `Type not handled: ${orig.toString()}`)
 }
 

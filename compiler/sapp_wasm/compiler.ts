@@ -6,6 +6,7 @@ import { ExpressionCompiler } from './expression.ts';
 import { FunctionCollector } from './functions.ts';
 import { EnvironmentInjector } from './env/mod.ts';
 import { CompilerError } from '../errors.ts';
+import { MemoryHelper } from './memory.ts';
 
 export class WasmCompiler implements Compiler {
   constructor(private readonly provider: ModuleProvider) { }
@@ -14,6 +15,7 @@ export class WasmCompiler implements Compiler {
     const generator = new Generator(this.provider, Kernel);
     const generated = generator.generateKnownModule([file]);
     const module = new wasm.WasmModule();
+    const memory = new MemoryHelper(module);
     const injector = new EnvironmentInjector();
     const collector = new FunctionCollector(module, injector);
     for (const def of generated.exports.values())
@@ -23,7 +25,7 @@ export class WasmCompiler implements Compiler {
 
     for (const func of collector)
       func.build(source => {
-        const expr = new ExpressionCompiler(manager);
+        const expr = new ExpressionCompiler(manager, memory);
         expr.submit(source);
         return expr.expression.code;
       });
