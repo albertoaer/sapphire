@@ -2,6 +2,7 @@ import { References } from './constants.ts';
 
 export const RawInstructions: { [id: number]: number[] | [number[], number[]] } = {
   [References.nop]: [],
+  [References.drop]: [0x1A],
 
   [References.i32_add]: [0x6A],
   [References.i64_add]: [0x7C],

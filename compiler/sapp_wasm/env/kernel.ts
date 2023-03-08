@@ -236,6 +236,8 @@ const bool: sapp.Func[] = [
   }
 ]
 
+const pop: sapp.Func = { inputSignature: [sapp.Any], outputSignature: sapp.Void, source: References.drop };
+
 export const Kernel: sapp.Module = {
   route,
   defs: new Map([
@@ -251,6 +253,7 @@ export const Kernel: sapp.Module = {
     funcToDef('f64', f64),
     funcToDef('bool', bool),
     funcToDef('!!', bool),
+    funcToDef('pop', [pop]),
   ]),
   exports: [] as sapp.Def[]
 } as const;

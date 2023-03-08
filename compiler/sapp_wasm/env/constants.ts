@@ -1,5 +1,6 @@
 export enum References {
   nop,
+  drop,
 
   i32_add,
   i64_add,
