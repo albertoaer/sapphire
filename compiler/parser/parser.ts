@@ -26,15 +26,15 @@ export class Parser {
 
   tryParseLiteral(): Literal | undefined {
     const boolV = this.tokens.nextIs({ value: 'true' }) ?? this.tokens.nextIs({ value: 'false' });
-    if (boolV) return { type: 'bool', value: boolV.value, meta: { line: this.tokens.line } };
+    if (boolV) return { type: 'bool', value: boolV.value, meta: this.tokens.createMeta() };
     const stringV = this.tokens.nextIs({ type: 'string' });
-    if (stringV) return { type: 'string', value: stringV.value, meta: { line: this.tokens.line } };
+    if (stringV) return { type: 'string', value: stringV.value, meta: this.tokens.createMeta() };
     const numberV = this.tokens.nextIs({ type: 'float' }) ?? this.tokens.nextIs({ type: 'int' });
     if (numberV) {
       const type: Literal['type'] = this.tokens.nextIs({ value: '^' }) ?
         (numberV.type === 'int' ? 'i64' : 'f64') :
         (numberV.type === 'int' ? 'i32' : 'f32'); 
-      return { type, value: numberV.value, meta: { line: this.tokens.line } };
+      return { type, value: numberV.value, meta: this.tokens.createMeta() };
     }
   }
 
@@ -49,7 +49,7 @@ export class Parser {
   }
 
   parseType(): Type {
-    const line = this.tokens.line;
+    const meta = this.tokens.createMeta();
     let base: Type['base'];
     if (this.tokens.nextIs({ value: '[' })) {
       base = [] as Type[];
@@ -60,7 +60,7 @@ export class Parser {
       const literal = this.tryParseLiteral();
       if (literal) base = literal;
       else base = {
-        route: this.parseName(this.tokens.expectNext({ type: 'identifier' }).value), meta: { line }
+        route: this.parseName(this.tokens.expectNext({ type: 'identifier' }).value), meta
       }
     }
     const isArray = !!this.tokens.nextIs({ value: '{' });
@@ -71,7 +71,7 @@ export class Parser {
       array['size'] = size ? Number(size.value) : undefined;
       this.tokens.expectNext({ value: '}' });
     }
-    return { array, base, meta: { line } }
+    return { array, base, meta }
   }
 
   tryParseExpressionGroup(open: TokenExpect, close: TokenExpect): Expression[] | undefined {
@@ -87,7 +87,7 @@ export class Parser {
   parseBuild(): Expression {
     const args = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
     if (args === undefined) throw new ParserError(this.tokens.line, 'Expecting arguments to build the struct');
-    return { id: 'build', args, meta: { line: this.tokens.line }};
+    return { id: 'build', args, meta: this.tokens.createMeta() };
   }
 
   parseIf(notEnd?: boolean): Expression {
@@ -97,27 +97,27 @@ export class Parser {
     this.tokens.expectNext({ value: 'else' });
     const branch = this.tokens.nextIs({ value: 'if' }) ? this.parseIf(true) : this.parseExpression();
     if (!notEnd) this.tokens.expectNext({ value: 'end' });
-    return { id: 'if', cond, then, else: branch, meta: { line: this.tokens.line } };
+    return { id: 'if', cond, then, else: branch, meta: this.tokens.createMeta() };
   }
 
   parseAssignment(route: ParserRoute): Expression {
-    return { id: 'assign', name: route, meta: { line: this.tokens.line }, value: this.parseExpression() };
+    return { id: 'assign', name: route, meta: this.tokens.createMeta(), value: this.parseExpression() };
   }
 
   parseListOrTuple(): Expression | undefined {
     const tuple = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
-    if (tuple !== undefined) return { id: 'tuple_literal', exprs: tuple, meta: { line: this.tokens.line } };
+    if (tuple !== undefined) return { id: 'tuple_literal', exprs: tuple, meta: this.tokens.createMeta() };
 
     const list = this.tryParseExpressionGroup({ value: '{' }, { value: '}' });
     if (list !== undefined) {
-      return { id: 'list_literal', exprs: list, meta: { line: this.tokens.line } };
+      return { id: 'list_literal', exprs: list, meta: this.tokens.createMeta() };
     }
   }
 
   parseExpressionTerm(): Expression {
     if (this.tokens.nextIs({ value: 'new' })) return this.parseBuild();
     if (this.tokens.nextIs({ value: 'if' })) return this.parseIf();
-    if (this.tokens.nextIs({ value: '.' })) return { id: 'none', meta: { line: this.tokens.line } };
+    if (this.tokens.nextIs({ value: '.' })) return { id: 'none', meta: this.tokens.createMeta() };
 
     const listOrTuple = this.parseListOrTuple();
     if (listOrTuple) return listOrTuple;
@@ -125,21 +125,21 @@ export class Parser {
     const group = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
     if (group !== undefined) {
       if (group.length === 1) return group[0];
-      return { id: 'group', exprs: group, meta: { line: this.tokens.line } };
+      return { id: 'group', exprs: group, meta: this.tokens.createMeta() };
     }
     const l = this.tryParseLiteral();
-    if (l !== undefined) return { id: 'literal', value: l, meta: { line: this.tokens.line } };
+    if (l !== undefined) return { id: 'literal', value: l, meta: this.tokens.createMeta() };
     const id = this.tokens.nextIs({ type: 'identifier' });
     if (id) {
       const route = this.parseName(id.value);
 
       if (this.tokens.nextIs({ value: '=' }))
-        return this.parseAssignment({ route, meta: { line: this.tokens.line } });
+        return this.parseAssignment({ route, meta: this.tokens.createMeta() });
 
       const args = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
-      const line = this.tokens.line;
-      if (args !== undefined) return { id: 'call', func: { route, meta: { line } }, args: args, meta: { line: this.tokens.line } };
-      return { id: 'value', name: { route, meta: { line } }, meta: { line: this.tokens.line } };
+      const meta = this.tokens.createMeta();
+      if (args !== undefined) return { id: 'call', func: { route, meta }, args: args, meta };
+      return { id: 'value', name: { route, meta }, meta };
     }
     this.tokens.emitError('Expecting expression');
   }
@@ -151,20 +151,20 @@ export class Parser {
     let route = undefined;
     do {
       if ((callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' })) !== undefined)
-        expr = { id: 'call', func: expr, args: callArgs, meta: { line: this.tokens.line } };
+        expr = { id: 'call', func: expr, args: callArgs, meta: this.tokens.createMeta() };
       if ((indexArgs = this.tryParseExpressionGroup({ value: '[' }, { value: ']' })) !== undefined)
-        expr = { id: 'index', origin: expr, args: indexArgs, meta: { line: this.tokens.line } };
+        expr = { id: 'index', origin: expr, args: indexArgs, meta: this.tokens.createMeta() };
       if (this.tokens.nextIs({ value: '.' })) {
         const nm = this.tokens.expectNext({ type: 'identifier' });
         route = this.parseName(nm.value);
-        const line = this.tokens.line;
-        expr = { id: 'get', origin: expr, name: { route, meta: { line } }, meta: { line: this.tokens.line } };
+        const meta = this.tokens.createMeta();
+        expr = { id: 'get', origin: expr, name: { route, meta }, meta };
       } else route = undefined;
     } while (callArgs !== undefined || indexArgs !== undefined || route !== undefined);
     while (this.tokens.nextIs({ value: ':' })) {
-      const line = this.tokens.line
       const route = {
-        route: this.parseName(this.tokens.expectNext({ type: 'identifier' }).value), meta: { line }
+        route: this.parseName(this.tokens.expectNext({ type: 'identifier' }).value),
+        meta: this.tokens.createMeta()
       }
       expr = { id: 'call', func: route, meta: expr.meta, args: [expr] };
     }
@@ -176,9 +176,9 @@ export class Parser {
     let expr: Expression = op
       ? {
         id: 'call',
-        func: { route: [op.value], meta: { line: this.tokens.line } },
+        func: { route: [op.value], meta: this.tokens.createMeta() },
         args: [this.parseExpressionRecursiveTerm()],
-        meta: { line: this.tokens.line }
+        meta: this.tokens.createMeta()
       }
       : this.parseExpressionRecursiveTerm();
 
@@ -186,9 +186,9 @@ export class Parser {
     while (opMiddle !== undefined) {
       expr = {
         id: 'call',
-        func: { route: [opMiddle.value], meta: { line: this.tokens.line } },
+        func: { route: [opMiddle.value], meta: this.tokens.createMeta() },
         args: [expr, this.parseExpressionRecursiveTerm()],
-        meta: { line: this.tokens.line }
+        meta: this.tokens.createMeta()
       };
       opMiddle = this.tokens.nextIs({ type: 'operator' });
     }
@@ -196,7 +196,7 @@ export class Parser {
   }
 
   parseStruct(): Struct {
-    const struct: Struct = { types: [], meta: { line: this.tokens.line } };
+    const struct: Struct = { types: [], meta: this.tokens.createMeta() };
     if (!this.tokens.nextIs({ value: '_' }))
       do struct.types.push(this.parseType());
       while (this.tokens.nextIs({ value: ',' }));
@@ -211,7 +211,7 @@ export class Parser {
         args.push({
           name: this.tokens.nextIs({ type: 'identifier' })?.value ?? null,
           type,
-          meta: { line: this.tokens.line }
+          meta: this.tokens.createMeta()
         });
       } while (this.tokens.nextIs({ value: ',' }));
       this.tokens.expectNext(end);
@@ -227,7 +227,7 @@ export class Parser {
         args.push({
           name: this.tokens.nextIs({ type: 'identifier' })?.value ?? null,
           type: 'value' in type ? null : type,
-          meta: { line: this.tokens.line }
+          meta: this.tokens.createMeta()
         });
       } while (this.tokens.nextIs({ value: ',' }));
       this.tokens.expectNext(end);
@@ -237,7 +237,7 @@ export class Parser {
 
   parseFunc(name: string, mods: Set<typeof FuncModifiers[number]>, struct?: HeuristicList): Func {
     const modsData = { force: mods.has('force'), private: mods.has('priv') };
-    const meta = { line: this.tokens.line };
+    const meta = this.tokens.createMeta();
     const inputs = this.parseArgList({ value: ')'});
     const output = this.tokens.nextIs({ value: ':' }) ? this.parseType() : undefined;
 
@@ -248,7 +248,7 @@ export class Parser {
       exprs.push(this.parseExpression());
     } while (this.tokens.nextIs({ value: ',' }));
     const source: Expression = exprs.length === 1 ? exprs[0] : {
-      id: 'group', exprs, meta: { line: this.tokens.line }
+      id: 'group', exprs, meta: this.tokens.createMeta()
     };
     return { inputs, name, output, struct, source, meta, ...modsData }
   }
@@ -262,24 +262,24 @@ export class Parser {
 
   parseExtend(): ParserRoute {
     const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
-    return { route: route, meta: { line: this.tokens.line } };
+    return { route: route, meta: this.tokens.createMeta() };
   }
 
   parseUse() {
-    const line = this.tokens.line;
+    const meta = this.tokens.createMeta();
     const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
     if (this.tokens.nextIs({ value: 'as' }))
       this.dependencies.push(
-        { route: route, meta: { line }, mode: 'named', name: this.tokens.expectNext({ type: 'identifier' }).value }
+        { route: route, meta, mode: 'named', name: this.tokens.expectNext({ type: 'identifier' }).value }
       );
     else if (this.tokens.nextIs({ value: 'into' }))
-      this.dependencies.push({ route: route, meta: { line }, mode: 'into'})
+      this.dependencies.push({ route: route, meta, mode: 'into' });
     else
-      this.dependencies.push({ route: route, meta: { line }, mode: 'named', name: route.at(-1) as string});
+      this.dependencies.push({ route: route, meta, mode: 'named', name: route.at(-1) as string });
   }
 
   parseDef(mods: Set<typeof DefModifiers[number]>) {
-    const line = this.tokens.line;
+    const meta = this.tokens.createMeta();
     const opname = this.tokens.nextIs({ type: 'operator' })?.value;
     const name = opname ? opname : this.tokens.expectNext({ type: 'identifier' }).value;
     const functions: Func[] = [];
@@ -304,7 +304,7 @@ export class Parser {
       while (this.tokens.nextIs({ value: ';' }));
     }
     this.definitions.push({
-      name, structs, functions, meta: { line }, extensions,
+      name, structs, functions, meta, extensions,
       exported: mods.has('export'), ensured: mods.has('ensured'), private: mods.has('priv')
     });
   }

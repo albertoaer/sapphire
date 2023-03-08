@@ -1,4 +1,5 @@
 import { ParserError } from '../errors.ts';
+import { ParserMeta } from './common.ts';
 
 export type Token = {
   line: number,
@@ -126,6 +127,10 @@ export class TokenList {
   get empty(): boolean { return this.current >= this.tokens.length }
 
   get line(): number { return this.tokens[this.current]?.line ?? this.tokens[this.current-1]?.line ?? 1 }
+
+  createMeta(): ParserMeta {
+    return new ParserMeta(this.line);
+  }
 
   nextIs(expect: TokenExpect): Token | undefined {
     if (this.empty) return undefined;

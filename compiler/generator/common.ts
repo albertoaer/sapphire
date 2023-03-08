@@ -2,15 +2,14 @@ import * as parser from '../parser/common.ts';
 export * as parser from '../parser/common.ts';
 import * as sapp from '../sapp.ts';
 export * as sapp from '../sapp.ts';
-import { ParserError } from "../errors.ts";
 
 export class NameRoute {
   private current = 0;
 
   constructor(private readonly route: parser.ParserRoute) { }
 
-  get line(): number {
-    return this.route.meta.line;
+  get meta(): parser.ParserMeta {
+    return this.route.meta;
   }
 
   get isNext(): boolean {
@@ -18,12 +17,12 @@ export class NameRoute {
   }
 
   get next(): string {
-    if (!this.isNext) throw new ParserError(this.line, 'Empty route');
+    if (!this.isNext) throw this.meta.error('Empty route');
     return this.route.route[this.current++];
   }
 
   discardOne() {
-    if (this.current <= 0) throw new ParserError(this.line, 'Invalid route manipulation');
+    if (this.current <= 0) throw this.meta.error('Invalid route manipulation');
     this.current--;
   }
 }
@@ -54,8 +53,7 @@ export abstract class ModuleEnv {
     if (Array.isArray(tp.base)) return new sapp.Type(tp.base.map(x => this.resolveType(x)), array);
   
     const unexpectChild = (name: string, n: string[]) => {
-      if (n.length > 1)
-        throw new ParserError(tp.meta.line, `${name} has no childs`)
+      if (n.length > 1) throw tp.meta.error(`${name} has no childs`)
     };
   
     const root = tp.base.route[0];
@@ -65,12 +63,12 @@ export abstract class ModuleEnv {
     }
     if (root === 'void') {
       unexpectChild(root, tp.base.route);
-      if (array) throw new ParserError(tp.meta.line, 'Void cannot be an array');
+      if (array) throw tp.meta.error('Void cannot be an array');
       return sapp.Void;
     }
     if (root === 'any') {
       unexpectChild(root, tp.base.route);
-      if (array) throw new ParserError(tp.meta.line, 'Any cannot be an array');
+      if (array) throw tp.meta.error('Any cannot be an array');
       return sapp.Any;
     }
   

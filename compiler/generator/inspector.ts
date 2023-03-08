@@ -1,4 +1,3 @@
-import { ParserError } from "../errors.ts";
 import { FetchedInstanceFunc, ModuleEnv, NameRoute, sapp } from "./common.ts";
 
 export class ModuleInspector extends ModuleEnv {
@@ -9,7 +8,7 @@ export class ModuleInspector extends ModuleEnv {
   fetchDef(name: NameRoute): sapp.Def {
     const id = name.next;
     const def = this.module.defs.get(id);
-    if (!def) throw new ParserError(name.line, `Symbol not found: ${id}`);
+    if (!def) throw name.meta.error(`Symbol not found: ${id}`);
     return def;
   }
   
@@ -25,7 +24,7 @@ export class DefInspector extends ModuleEnv {
   }
 
   fetchDef(name: NameRoute): sapp.Def {
-    if (name.isNext) throw new ParserError(name.line, `Cannot retrive a definition from a definition`);
+    if (name.isNext) throw name.meta.error(`Cannot retrive a definition from a definition`);
     return this.def;
   }
   
@@ -41,8 +40,8 @@ function getDefFunc(def: sapp.Def, name: NameRoute, inputSignature: sapp.Type[])
     const func = funcs.find(
       x => sapp.typeArrayEquals(x.inputSignature, inputSignature)
     );
-    if (!func) throw new ParserError(name.line, `Invalid signature for function ${def.name}.${id}(...)`);
+    if (!func) throw name.meta.error(`Invalid signature for function ${def.name}.${id}(...)`);
     return func;
   }
-  throw new ParserError(name.line, `Function ${id} does not exists on ${def.name}`);
+  throw name.meta.error(`Function ${id} does not exists on ${def.name}`);
 }

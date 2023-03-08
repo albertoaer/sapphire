@@ -1,4 +1,12 @@
-export type ParserMeta = { line: number }
+import { ParserError } from '../errors.ts';
+
+export class ParserMeta {
+  constructor(public readonly line: number) { }
+
+  error(msg: string): ParserError {
+    return new ParserError(this.line, msg);
+  }
+}
 
 export type ParserRoute = {
   readonly route: string[],

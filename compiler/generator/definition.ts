@@ -3,12 +3,13 @@ import {
   DefinitionBuilder, FunctionBuilder, NameRoute
 } from './common.ts';
 import { FunctionGenerator } from './function.ts';
-import { FeatureError, ParserError } from '../errors.ts';
+import { ParserError } from '../errors.ts';
+import { ParserMeta } from '../parser/common.ts';
 
 class InstanceFunction {
   // Each index is a struct
   private readonly functionsByStruct: (FunctionBuilder | undefined)[];
-  private refLine: number;
+  private meta: ParserMeta;
   private firstIdx: number;
   public readonly isPrivate: boolean;
 
@@ -17,7 +18,7 @@ class InstanceFunction {
     total: number
   ) {
     this.functionsByStruct = new Array(total);
-    this.refLine = first.pre.meta.line;
+    this.meta = first.pre.meta;
     this.isPrivate = first.func.isPrivate;
     this.push(first.pre, first.func, first.structIdx);
     this.firstIdx = first.structIdx;
@@ -29,19 +30,19 @@ class InstanceFunction {
 
   push(pre: parser.Func, func: FunctionBuilder, structIdx: number) {
     if (this.isPrivate !== func.isPrivate)
-      throw new ParserError(pre.meta.line, 'Protection level must be the same between instance functions');
+      throw pre.meta.error('Protection level must be the same between instance functions');
     if (this.functionsByStruct[structIdx] !== undefined)
-      throw new ParserError(pre.meta.line, 'Repeated function signature');
+      throw pre.meta.error('Repeated function signature');
     this.functionsByStruct[structIdx] = func;
   }
 
   get functions(): sapp.Func[] {
     if (this.functionsByStruct.findIndex(x => x === undefined) >= 0)
-      throw new ParserError(this.refLine, 'Signature not covered by every struct');
+      throw this.meta.error('Signature not covered by every struct');
     const funcs = this.functionsByStruct.map(x => x!.func);
     for (let i = 1; i < funcs.length; i++)
       if (!funcs[i-1].outputSignature.isEquals(funcs[i].outputSignature))
-        throw new ParserError(this.refLine, 'Return type must be the same between instance functions');
+        throw this.meta.error('Return type must be the same between instance functions');
     return funcs;
   }
 }
@@ -82,9 +83,8 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
     const funcArr = this.functions.get(id); // Empty name method if no name provided
     if (funcArr) {
       const func = funcArr.find(x => sapp.typeArrayEquals(x.inputs, inputSignature));
-      if (!func)
-        throw new ParserError(name.line, `Invalid signature for function ${this.def.name}.${id}(...)`)
-      if (name.isNext) throw new FeatureError(name.line, 'Function Attributes');
+      if (!func) throw name.meta.error(`Invalid signature for function ${this.def.name}.${id}(...)`);
+      if (name.isNext) throw name.meta.error('Function Attributes');
       return func.func;
     }
     if (id) name.discardOne();
