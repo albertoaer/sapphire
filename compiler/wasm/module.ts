@@ -38,12 +38,12 @@ export enum WasmType {
   Externref = 0x6F
 }
 
-export const WasmTypeBits: { [tp in WasmType]?: number } = {
-  [WasmType.I32]: 32,
-  [WasmType.I64]: 64,
-  [WasmType.F32]: 32,
-  [WasmType.F64]: 64,
-  [WasmType.V128]: 128,
+export const WasmTypeBytes: { [tp in WasmType]?: number } = {
+  [WasmType.I32]: 4,
+  [WasmType.I64]: 8,
+  [WasmType.F32]: 4,
+  [WasmType.F64]: 8,
+  [WasmType.V128]: 16,
 }
 
 export type WasmDeclaredType = {
