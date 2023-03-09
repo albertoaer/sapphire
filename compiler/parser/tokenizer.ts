@@ -162,8 +162,8 @@ export class TokenList {
     );
   }
 
-  emitError(msg: string, line?: number): never {
-    throw new ParserError(line ?? this.line, msg);
+  emitError(msg: string): never {
+    throw this.createMeta().error(msg);
   }
 
   remain(): Token[] {
