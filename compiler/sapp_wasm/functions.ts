@@ -16,9 +16,9 @@ function signatureOf(func: sapp.Func): [wasm.WasmType[], wasm.WasmType[]] {
 export class FunctionBind {
   constructor(private readonly func: sapp.Func<sapp.Expression>, private readonly wfunc: wasm.WasmFunction) { }
 
-  build(apply: (expr: sapp.Expression) => Uint8Array) {
+  build(apply: (expr: sapp.Expression, locals: wasm.WasmType[]) => Uint8Array) {
     const locals = this.func.locals ? this.func.locals.map(convertToWasmType) : [];
-    const code = apply(this.func.source);
+    const code = apply(this.func.source, locals);
     this.wfunc.body = { locals, code };
   }
 

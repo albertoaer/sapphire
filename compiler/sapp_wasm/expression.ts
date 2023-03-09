@@ -3,13 +3,49 @@ import { sapp, wasm, convertToWasmType } from './common.ts';
 import type { FunctionResolutor } from './functions.ts';
 import { MemoryHelper } from './memory.ts';
 
+export class LocalsInfo {
+  private readonly aux: [wasm.WasmType, boolean][] = [];
+  private readonly localsBaseSize: number;
+
+  constructor(private readonly locals: wasm.WasmType[]) {
+    this.localsBaseSize = locals.length;
+  }
+
+  requireAux(tp: wasm.WasmType): number {
+    for (let i = 0; i < this.aux.length; i++) {
+      if (this.aux[i][0] == tp && !this.aux[i][1]) {
+        this.aux[i][1] = true;
+        return i + this.locals.length;
+      }
+    }
+    this.aux.push([tp, true]);
+    return this.locals.push(tp) - 1;
+  }
+
+  freeAux(idx: number) {
+    this.aux[idx - this.localsBaseSize][1] = false;
+  }
+
+  at(idx: number): wasm.WasmType | undefined {
+    return this.locals[idx];
+  }
+}
+
 export class ExpressionCompiler {
   public readonly expression = new wasm.WasmExpression();
+  private readonly locals: LocalsInfo;
 
-  constructor(private readonly resolutor: FunctionResolutor, private readonly memory: MemoryHelper) { }
+  constructor(
+    private readonly resolutor: FunctionResolutor,
+    locals: wasm.WasmType[] | LocalsInfo,
+    private readonly memory: MemoryHelper
+  ) {
+    if (locals instanceof LocalsInfo) this.locals = locals;
+    else this.locals = new LocalsInfo(locals);
+  }
 
   private fastProcess(ex: sapp.Expression): wasm.WasmExpression {
-    const comp = new ExpressionCompiler(this.resolutor, this.memory);
+    const comp = new ExpressionCompiler(this.resolutor, this.locals, this.memory);
     comp.submit(ex);
     return comp.expression;
   }
@@ -72,9 +108,31 @@ export class ExpressionCompiler {
   }
 
   private allocateList(exprs: sapp.Expression[]) {
-    const sz = wasm.WasmTypeBytes[convertToWasmType(exprs[0].type)];
+    const tp = convertToWasmType(exprs[0].type);
+    const sz = wasm.WasmTypeBytes[tp];
     if (sz === undefined) throw new CompilerError('Wasm', 'Cannot compute undefined size');
-    this.expression.pushRaw(...this.memory.allocate(sz * exprs.length));
+    const getAddress = this.memory.allocate(sz * exprs.length);
+    const aux = this.locals.requireAux(wasm.WasmType.I32);
+    this.expression.pushExpr(getAddress).pushRaw(0x22, aux, 0x20, aux);
+    this.expression.pushExpr(this.memory.copySame(exprs.map(x => this.fastProcess(x)), tp, aux));
+    this.locals.freeAux(aux);
+  }
+
+  private allocateTuple(exprs: sapp.Expression[]) {
+    let sz = 0;
+    const mapped: [wasm.WasmExpression, wasm.WasmType][] = [];
+    for (const expr of exprs) {
+      const tp = convertToWasmType(expr.type);
+      mapped.push([this.fastProcess(expr), tp]);
+      const tempsz = wasm.WasmTypeBytes[tp];
+      if (tempsz === undefined) throw new CompilerError('Wasm', 'Cannot compute undefined size');
+      sz += tempsz;
+    }
+    const getAddress = this.memory.allocate(sz);
+    const aux = this.locals.requireAux(wasm.WasmType.I32);
+    this.expression.pushExpr(getAddress).pushRaw(0x22, aux, 0x20, aux);
+    this.expression.pushExpr(this.memory.copy(mapped, aux));
+    this.locals.freeAux(aux);
   }
 
   submit(ex: sapp.Expression) {
@@ -96,6 +154,9 @@ export class ExpressionCompiler {
         break;
       case 'list_literal':
         this.allocateList(ex.exprs);
+        break;
+      case 'tuple_literal':
+        this.allocateTuple(ex.exprs);
         break;
       case 'none':
         break;

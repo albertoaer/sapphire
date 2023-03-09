@@ -24,8 +24,8 @@ export class WasmCompiler implements Compiler {
     const manager = collector.manager;
 
     for (const func of collector)
-      func.build(source => {
-        const expr = new ExpressionCompiler(manager, memory);
+      func.build((source, locals) => {
+        const expr = new ExpressionCompiler(manager, locals, memory);
         expr.submit(source);
         return expr.expression.code;
       });
