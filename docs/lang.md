@@ -6,11 +6,11 @@ Currently Sapphire is in a very early stage, so many of the features are still i
 
 - numeric types: `i32` `i64` `f32` `f64`
   - Wasm numeric types wrappers
-- `string` **unimplemented yet** internally represed as an `i32`
+- `string` internally represed as an `i32`
 - `bool` internally represented as an `i32`
 - `void` represents the absence of a value
 - `any` utility type used by the kernel, cannot be compiled
-- `tuples` and `lists` **unimplemented yet**
+- `tuples` and `lists` internally represed as an `i32`
 
 # Comments
 
