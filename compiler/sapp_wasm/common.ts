@@ -6,7 +6,7 @@ export * as parser from '../parser/parser.ts';
 import { CompilerError } from '../errors.ts';
 
 export function convertToWasmType(orig: sapp.Type): wasm.WasmType {
-  if (orig.array !== undefined) return wasm.WasmType.I32;
+  if (orig.array !== undefined || Array.isArray(orig.base)) return wasm.WasmType.I32;
   switch (orig.base) {
     case 'string': return wasm.WasmType.I32;
     case 'bool': return wasm.WasmType.I32;
