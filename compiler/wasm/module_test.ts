@@ -13,6 +13,16 @@ Deno.test('sample module', async () => {
   assertEquals((instance.exports.num as CallableFunction)(20, 10), 300);
 });
 
+Deno.test('locals', async () => {
+  const module = new WasmModule();
+  module.define([WasmType.I32, WasmType.I32], [WasmType.I32], { export: 'dupsum' }).body = {
+    code: new WasmExpression(0x20, 0, 0x21, 1, 0x20, 1, 0x20, 1, 0x6A),
+    locals: [WasmType.I32]
+  };
+  const { instance } = await WebAssembly.instantiate(module.code);
+  assertEquals((instance.exports.dupsum as CallableFunction)(20), 40);
+});
+
 Deno.test('tables', async () => {
   const module = new WasmModule();
   const c = module.import('operations', 'val', [], [WasmType.I32]);

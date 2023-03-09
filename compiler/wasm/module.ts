@@ -204,7 +204,7 @@ export class WasmModule {
   private getFunctionsCode(): number[] {
     if (!this.functions) return [];
     return section(WasmSection.Code, encodeVector(this.functions.map(
-      x => encodeVector([...encodeVector(x.body.locals), ...x.body.code, 0x0b])
+      x => encodeVector([...encodeVector(x.body.locals.map(x => [1, x])), ...x.body.code, 0x0b])
     )));
   }
 
