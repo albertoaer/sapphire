@@ -67,6 +67,19 @@ export class MemoryHelper {
     }
     return final;
   }
+
+  /**
+   * This method expect the address to be already in the stack
+   */
+  copyBuffer(buffer: Uint8Array, aux: number): WasmExpression {
+    const final = new WasmExpression();
+    for (let i = 0; i < buffer.length; i++) {
+      if (i < buffer.length - 1) final.pushRaw(0x22, aux, 0x20, aux);
+      final.pushRaw(0x41).pushNumber(buffer[i], 'int', 32).pushRaw(0x36, 0, 0);
+      if (i < buffer.length - 1) final.pushRaw(0x41).pushNumber(1, 'int', 32).pushRaw(0x6A);
+    }
+    return final;
+  }
 }
 
 /**

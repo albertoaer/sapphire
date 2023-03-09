@@ -1,4 +1,4 @@
-import { CompilerError, FeatureError } from '../errors.ts';
+import { CompilerError } from '../errors.ts';
 import { sapp, wasm, convertToWasmType } from './common.ts';
 import type { FunctionResolutor } from './functions.ts';
 import { MemoryHelper } from './memory.ts';
@@ -75,7 +75,9 @@ export class ExpressionCompiler {
 
   private pushLiteral({ type, value }: sapp.Literal) {
     switch (type) {
-      case 'string': throw new FeatureError(null, 'Strings');
+      case 'string':
+        this.allocateString(value);
+        break;
       case 'bool':
         this.expression.pushRaw(0x41, value === 'true' ? 1 : 0);
         break;
@@ -105,6 +107,15 @@ export class ExpressionCompiler {
 
   private paramGet(name: number) {
     this.expression.pushRaw(0x20, name);
+  }
+
+  private allocateString(value: string) {
+    const encoded = wasm.encodings.encodeString(value);
+    const getAddress = this.memory.allocate(encoded.length);
+    const aux = this.locals.requireAux(wasm.WasmType.I32);
+    this.expression.pushExpr(getAddress).pushRaw(0x22, aux, 0x20, aux);
+    this.expression.pushExpr(this.memory.copyBuffer(encoded, aux));
+    this.locals.freeAux(aux);
   }
 
   private allocateList(exprs: sapp.Expression[]) {
