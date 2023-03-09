@@ -9,7 +9,7 @@ export function ieee754(value: number, bits: 32 | 64): number[] {
 
 export function encodeString(str: string): Uint8Array {
   const encoded = new TextEncoder().encode(str);
-  return Uint8Array.from([ encoded.length, ...encoded ]);
+  return Uint8Array.from([ ...signedLEB128(encoded.length), ...encoded ]);
 }
 
 export const signedLEB128 = (value: number): number[] => Array.from(Leb128.signed.encode(value));
