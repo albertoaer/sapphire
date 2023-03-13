@@ -78,10 +78,6 @@ export type Expression = ({
   readonly id: 'list_literal',
   readonly exprs: Expression[]
 } | {
-  readonly id: 'index',
-  readonly origin: Expression,
-  readonly args: Expression[]
-} | {
   readonly id: 'assign',
   readonly name: ParserRoute,
   readonly value: Expression

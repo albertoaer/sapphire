@@ -149,8 +149,10 @@ export class Parser {
     if (callArgs !== undefined)
       return { id: 'call', func: expr, args: callArgs, meta: this.tokens.createMeta() };
     const indexArgs = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
-    if (indexArgs !== undefined)
-      return { id: 'index', origin: expr, args: indexArgs, meta: this.tokens.createMeta() };
+    if (indexArgs !== undefined) {
+      const meta = this.tokens.createMeta();
+      return { id: 'call', func: { route: ['get'], meta }, args: [expr, ...indexArgs], meta };
+    }
     if (this.tokens.nextIs({ value: '.' })) {
       const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
       const meta = this.tokens.createMeta();

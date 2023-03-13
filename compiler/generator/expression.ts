@@ -55,10 +55,6 @@ export class ExpressionGenerator {
     return { id: 'list_literal', exprs: items, type: new sapp.Type(items[0].type, 'auto') };
   }
   
-  private processIndex(ex: parser.Expression & { id: 'index' }): sapp.Expression {
-    throw new FeatureError(ex.meta.line, 'Indexation');
-  }
-  
   private processLiteral({ value }: parser.Expression & { id: 'literal' }): sapp.Expression {
     return { id: 'literal', value, type: new sapp.Type(value.type) };
   }
@@ -88,7 +84,6 @@ export class ExpressionGenerator {
       case 'if': return this.processIf(ex);
       case 'tuple_literal': return this.processTuple(ex);
       case 'list_literal': return this.processList(ex);
-      case 'index': return this.processIndex(ex);
       case 'literal': return this.processLiteral(ex);
       case 'value': return this.processValue(ex);
       case 'build': return this.processBuild(ex);
