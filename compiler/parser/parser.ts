@@ -138,7 +138,7 @@ export class Parser {
 
       const args = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
       const meta = this.tokens.createMeta();
-      if (args !== undefined) return { id: 'call', func: { route, meta }, args: args, meta };
+      if (args !== undefined) return { id: 'call', name: { route, meta }, args: args, meta };
       return { id: 'value', name: { route, meta }, meta };
     }
     this.tokens.emitError('Expecting expression');
@@ -147,22 +147,25 @@ export class Parser {
   tryParseExpressionRecursiveOp(expr: Expression): Expression | undefined {
     const callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
     if (callArgs !== undefined)
-      return { id: 'call', func: expr, args: callArgs, meta: this.tokens.createMeta() };
+      return { id: 'call', instance: expr, args: callArgs, meta: this.tokens.createMeta() };
     const indexArgs = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
     if (indexArgs !== undefined) {
       const meta = this.tokens.createMeta();
-      return { id: 'call', func: { route: ['get'], meta }, args: [expr, ...indexArgs], meta };
+      return { id: 'call', name: { route: ['get'], meta }, args: [expr, ...indexArgs], meta };
     }
     if (this.tokens.nextIs({ value: '.' })) {
       const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
       const meta = this.tokens.createMeta();
-      return { id: 'get', origin: expr, name: { route, meta }, meta };
+      const callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
+      const base = { instance: expr, name: { route, meta }, meta };
+      if (callArgs !== undefined) return { id: 'call', args: callArgs, ...base }
+      else return { id: 'value', ...base };
     }
     if (this.tokens.nextIs({ value: ':' })) {
       const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
       const meta = this.tokens.createMeta();
       const callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
-      return { id: 'call', func: { route, meta }, meta: expr.meta, args: [expr, ...(callArgs ?? [])] };
+      return { id: 'call', name: { route, meta }, meta: expr.meta, args: [expr, ...(callArgs ?? [])] };
     }
   }
 
@@ -179,7 +182,7 @@ export class Parser {
     let expr: Expression = op
       ? {
         id: 'call',
-        func: { route: [op.value], meta: this.tokens.createMeta() },
+        name: { route: [op.value], meta: this.tokens.createMeta() },
         args: [this.parseExpressionRecursiveTerm()],
         meta: this.tokens.createMeta()
       }
@@ -189,7 +192,7 @@ export class Parser {
     while (opMiddle !== undefined) {
       expr = {
         id: 'call',
-        func: { route: [opMiddle.value], meta: this.tokens.createMeta() },
+        name: { route: [opMiddle.value], meta: this.tokens.createMeta() },
         args: [expr, this.parseExpressionRecursiveTerm()],
         meta: this.tokens.createMeta()
       };

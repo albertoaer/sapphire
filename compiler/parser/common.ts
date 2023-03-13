@@ -60,14 +60,16 @@ export type Expression = ({
   readonly else: Expression
 } | {
   readonly id: 'call',
-  readonly func: Expression | ParserRoute,
+  readonly name?: ParserRoute,
+  readonly instance?: Expression,
   readonly args: Expression[]
 } | {
   readonly id: 'literal',
   readonly value: Literal
 } | {
   readonly id: 'value',
-  readonly name: ParserRoute
+  readonly name: ParserRoute,
+  readonly instance?: Expression
 } | {
   readonly id: 'group',
   readonly exprs: Expression[]
@@ -81,10 +83,6 @@ export type Expression = ({
   readonly id: 'assign',
   readonly name: ParserRoute,
   readonly value: Expression
-} | {
-  readonly id: 'get',
-  readonly origin: Expression,
-  readonly name: ParserRoute
 } | {
   readonly id: 'build',
   readonly args: Expression[]

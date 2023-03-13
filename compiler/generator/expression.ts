@@ -1,5 +1,5 @@
 import { sapp, parser, FunctionEnv, NameRoute } from './common.ts';
-import { ParserError, FeatureError, MatchTypeError } from "../errors.ts";
+import { ParserError, MatchTypeError } from "../errors.ts";
 
 export class ExpressionGenerator {
   private processed: sapp.Expression | null = null;
@@ -17,9 +17,8 @@ export class ExpressionGenerator {
   }
 
   private processCall(ex: parser.Expression & { id: 'call' }): sapp.Expression {
-    if (!('route' in ex.func)) throw new FeatureError(ex.meta.line, 'Call Returned Function');
     const args = ex.args.map(x => this.processEx(x));
-    const func = this.env.fetchFunc(new NameRoute(ex.func), args.map(x => x.type));
+    const func = this.env.fetchFunc(new NameRoute(ex.name ?? { route: [], meta: ex.meta }), args.map(x => x.type));
     this.dependencyPool.add('owner' in func ? func.funcGroup : func);
     return 'owner' in func
       ? { id: 'call_instanced', args, func: func.funcGroup, owner: func.owner, type: func.funcGroup[0].outputSignature } 
@@ -79,7 +78,6 @@ export class ExpressionGenerator {
     switch (ex.id) {
       case 'assign': return this.processAssign(ex);
       case 'call': return this.processCall(ex);
-      case 'get': throw new FeatureError(ex.meta.line, 'Attribute Access');
       case 'group': return this.processGroup(ex);
       case 'if': return this.processIf(ex);
       case 'tuple_literal': return this.processTuple(ex);
