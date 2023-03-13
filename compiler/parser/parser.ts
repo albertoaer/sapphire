@@ -144,30 +144,31 @@ export class Parser {
     this.tokens.emitError('Expecting expression');
   }
 
+  tryParseExpressionRecursiveOp(expr: Expression): Expression | undefined {
+    const callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
+    if (callArgs !== undefined)
+      return { id: 'call', func: expr, args: callArgs, meta: this.tokens.createMeta() };
+    const indexArgs = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
+    if (indexArgs !== undefined)
+      return { id: 'index', origin: expr, args: indexArgs, meta: this.tokens.createMeta() };
+    if (this.tokens.nextIs({ value: '.' })) {
+      const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
+      const meta = this.tokens.createMeta();
+      return { id: 'get', origin: expr, name: { route, meta }, meta };
+    }
+    if (this.tokens.nextIs({ value: ':' })) {
+      const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
+      const meta = this.tokens.createMeta();
+      const callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
+      return { id: 'call', func: { route, meta }, meta: expr.meta, args: [expr, ...(callArgs ?? [])] };
+    }
+  }
+
   parseExpressionRecursiveTerm(): Expression {
     let expr = this.parseExpressionTerm();
-    let callArgs = undefined;
-    let indexArgs = undefined;
-    let route = undefined;
-    do {
-      if ((callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' })) !== undefined)
-        expr = { id: 'call', func: expr, args: callArgs, meta: this.tokens.createMeta() };
-      if ((indexArgs = this.tryParseExpressionGroup({ value: '[' }, { value: ']' })) !== undefined)
-        expr = { id: 'index', origin: expr, args: indexArgs, meta: this.tokens.createMeta() };
-      if (this.tokens.nextIs({ value: '.' })) {
-        const nm = this.tokens.expectNext({ type: 'identifier' });
-        route = this.parseName(nm.value);
-        const meta = this.tokens.createMeta();
-        expr = { id: 'get', origin: expr, name: { route, meta }, meta };
-      } else route = undefined;
-    } while (callArgs !== undefined || indexArgs !== undefined || route !== undefined);
-    while (this.tokens.nextIs({ value: ':' })) {
-      const route = {
-        route: this.parseName(this.tokens.expectNext({ type: 'identifier' }).value),
-        meta: this.tokens.createMeta()
-      }
-      expr = { id: 'call', func: route, meta: expr.meta, args: [expr] };
-    }
+    let next: Expression | undefined = expr;
+    do next = this.tryParseExpressionRecursiveOp(expr = next);
+    while(next);
     return expr;
   }
 
