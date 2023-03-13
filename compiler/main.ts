@@ -22,7 +22,9 @@ if (flags.output) {
 }
 
 if (flags.call) {
-  const imports = { ...window as unknown as WebAssembly.Imports };
+  const imports = {
+    console: console
+  } as unknown as WebAssembly.Imports;
   MemoryManager.createAndPlace(imports);
   const { instance } = await WebAssembly.instantiate(code, imports);
   const fn = instance.exports[flags.call] as CallableFunction | undefined;
