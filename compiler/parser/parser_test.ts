@@ -76,7 +76,8 @@ Deno.test('must parse', () => {
   });
   assertEquals(parserFor('a.c[b.c(),2,"hello"].x.y').parseExpression(), {
     id: 'get', name: { route: ['x', 'y'], meta }, meta, origin: {
-      id: 'index', meta, origin: { id: 'value', name: { route: ['a', 'c'], meta }, meta }, args: [
+      id: 'call', meta, func: { route: ['get'], meta }, args: [
+        { id: 'value', meta, name: { route: ['a', 'c'], meta } },
         { id: 'call', func: { route: ['b', 'c'], meta }, args: [], meta },
         { id: 'literal', value: { value: '2', type: 'i32', meta }, meta },
         { id: 'literal', value: { value: 'hello', type: 'string', meta }, meta }
