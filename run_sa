@@ -1,0 +1,2 @@
+#!/bin/sh
+deno run --allow-all compiler/main.ts -c main0 "$@"
