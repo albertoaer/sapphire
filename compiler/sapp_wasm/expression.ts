@@ -2,6 +2,7 @@ import { CompilerError } from '../errors.ts';
 import { sapp, wasm, convertToWasmType } from './common.ts';
 import type { FunctionResolutor } from './functions.ts';
 import { MemoryHelper } from './memory.ts';
+import { buildStructuredType } from './utils.ts';
 
 export class LocalsInfo {
   private readonly aux: [wasm.WasmType, boolean][] = [];
@@ -146,6 +147,11 @@ export class ExpressionCompiler {
     this.locals.freeAux(aux);
   }
 
+  private build(data: sapp.Expression[], tableIdx: number) {
+    this.allocateTuple(data);
+    this.expression.pushRaw(...buildStructuredType(tableIdx))
+  }
+
   submit(ex: sapp.Expression) {
     switch (ex.id) {
       case 'call': 
@@ -168,6 +174,9 @@ export class ExpressionCompiler {
         break;
       case 'tuple_literal':
         this.allocateTuple(ex.exprs);
+        break;
+      case 'build':
+        this.build(ex.args, ex.structIdx);
         break;
       case 'none':
         break;
