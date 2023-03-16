@@ -1,14 +1,14 @@
-import { sapp, wasm, convertToWasmType, ResolvedFunction, FunctionInjector } from "./common.ts";
+import { sapp, wasm, convertToWasmType, ResolvedFunction, FunctionTableInfo, FunctionInjector } from "./common.ts";
 import { CompilerError } from "../errors.ts";
 
 export interface FunctionResolutor {
   useFunc(func: sapp.Func): ResolvedFunction;
-  useFuncTable(funcs: sapp.Func[]): number;
+  useFuncTable(funcs: sapp.Func[]): FunctionTableInfo;
 }
 
 function signatureOf(func: sapp.Func): [wasm.WasmType[], wasm.WasmType[]] {
   return [
-    [...(func.struct ? [wasm.WasmType.I32] : []), ...func.inputSignature.map(convertToWasmType)],
+    func.inputSignature.map(convertToWasmType),
     func.outputSignature.isVoid ? [] : [convertToWasmType(func.outputSignature)]
   ];
 }
@@ -87,7 +87,7 @@ export class FunctionCollector {
 }
 
 export class FunctionManager implements FunctionResolutor {
-  private readonly instanceFunctions: Map<sapp.Func[], number> = new Map();
+  private readonly instanceFunctions: Map<sapp.Func[], FunctionTableInfo> = new Map();
   
   constructor(
     private readonly module: wasm.WasmModule,
@@ -100,13 +100,14 @@ export class FunctionManager implements FunctionResolutor {
     return resolved instanceof wasm.WasmFunction ? resolved.funcIdx : resolved;
   }
 
-  useFuncTable(funcs: sapp.Func[]): number {
+  useFuncTable(funcs: sapp.Func[]): FunctionTableInfo {
     if (!this.instanceFunctions.has(funcs)) {
       const resolved = funcs.map(this.useFunc.bind(this));
       if (resolved.find(x => typeof x !== 'number'))
         throw new CompilerError('Wasm', 'Tables are made up of pure functions');
-      const table = this.module.table(resolved as number[]);
-      this.instanceFunctions.set(funcs, table);
+      const typeIdx = (this.functions.get(funcs[0]) as wasm.WasmFunction).typeIdx;
+      const tableIdx = this.module.table(resolved as number[]);
+      this.instanceFunctions.set(funcs, { tableIdx, typeIdx });
     }
     return this.instanceFunctions.get(funcs)!;
   }

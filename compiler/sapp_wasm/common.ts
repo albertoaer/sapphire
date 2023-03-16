@@ -28,6 +28,7 @@ export type RawCodeSpec = {
 }
 
 export type ResolvedFunction = number | RawCodeSpec
+export type FunctionTableInfo = { tableIdx: number, typeIdx: number }
 
 export interface FunctionInjector {
   getRef?(ref: sapp.FunctionReference): ResolvedFunction | undefined;
