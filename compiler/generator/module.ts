@@ -1,4 +1,4 @@
-import { ModuleEnv, sapp, FetchedFuncResult, DefinitionBuilder, NameRoute } from "./common.ts";
+import { ModuleEnv, Global, sapp, FetchedFuncResult, DefinitionBuilder, NameRoute } from "./common.ts";
 
 export type DefConfig = { exported: boolean }
 
@@ -7,9 +7,7 @@ export class ModuleGenerator extends ModuleEnv {
   private readonly defs: Map<string, DefinitionBuilder> = new Map();
   private readonly exported: DefinitionBuilder[] = [];
 
-  constructor(
-    private readonly globals: Map<string, ModuleEnv>
-  ) {
+  constructor(private readonly globals: Map<string, Global>) {
     super();
   }
 
@@ -25,12 +23,14 @@ export class ModuleGenerator extends ModuleEnv {
     const id = name.next;
     const def = this.localDef(id);
     if (def) {
-      if (name.isNext) throw name.meta.error('Trying to fetch def, no inner property');
+      if (name.isNext) throw name.meta.error(`Unexpected access: ${name.next}`);
       return def.def;
     }
     const global = this.globals.get(id);
     if (!global) throw name.meta.error(`Symbol not found: ${id}`);
-    return global.fetchDef(name);
+    if ('fetchDef' in global)
+      return global.fetchDef(name);
+    else throw name.meta.error(`${id} does not contain definitions`);
   }
 
   fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult {
@@ -40,7 +40,8 @@ export class ModuleGenerator extends ModuleEnv {
       if (def) return def.fetchFunc(name, inputSignature);
       const global = this.globals.get(id);
       if (!global) throw name.meta.error(`Symbol not found, ${id}`);
-      return global.fetchFunc(name, inputSignature);
+      if ('fetchFunc' in global)
+        return global.fetchFunc(name, inputSignature);
     }
   }
 

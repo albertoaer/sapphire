@@ -2,7 +2,8 @@ import {
   parser, sapp, DefinitionEnv, FunctionEnv, FunctionBuilder, NameRoute, FetchedFuncResult
 } from './common.ts';
 import { ExpressionGenerator } from './expression.ts';
-import { FeatureError, ParserError } from '../errors.ts';
+import { ParserError } from '../errors.ts';
+import { InstancedDefInspector } from './inspector.ts';
 
 export class Parameters {
   constructor(private readonly params: [string | null, sapp.Type][]) { }
@@ -155,7 +156,7 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
     if (val) {
       if(val.type.array) throw name.meta.error('Array has no function');
       if (typeof val.type.base === 'object' && 'route' in val.type.base) {
-        throw new FeatureError(name.meta.line,'Function Tables'); 
+        return new InstancedDefInspector(val.type.base, val).fetchFunc(name, inputSignature);
       }
     }
     return;

@@ -7,13 +7,21 @@ export * from './utils.ts';
 
 export type FetchedInstanceFunc = { funcs: sapp.Func[], owner: sapp.Expression }
 
-export type FetchedFuncResult = sapp.Func | FetchedInstanceFunc | 'mismatch' | undefined;
+export type FuncMismatch = { route: string[] }
 
-export interface FunctionFetcher {
+export type FetchedFuncResult = sapp.Func | FetchedInstanceFunc | FuncMismatch | undefined
+
+export interface FuncFetcher {
   fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult;
 }
 
-export interface DefinitionBuilder extends FunctionFetcher {
+export interface DefFetcher {
+  fetchDef(name: NameRoute): sapp.Def;
+}
+
+export type Global = FuncFetcher | DefFetcher;
+
+export interface DefinitionBuilder extends FuncFetcher {
   readonly def: sapp.Def;
   readonly self: sapp.Type;
   readonly isPrivate: boolean;
@@ -27,7 +35,7 @@ export interface FunctionBuilder {
   readonly inputs: sapp.Type[];
 }
 
-export abstract class ModuleEnv implements FunctionFetcher {
+export abstract class ModuleEnv implements FuncFetcher, DefFetcher {
   abstract fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult;
   abstract fetchDef(name: NameRoute): sapp.Def;
 
@@ -61,14 +69,14 @@ export abstract class ModuleEnv implements FunctionFetcher {
   }
 }
 
-export interface DefinitionEnv extends FunctionFetcher {
+export interface DefinitionEnv extends FuncFetcher {
   readonly module: ModuleEnv;
 
   readonly self: sapp.Type;
   structFor(types: sapp.Type[]): number | undefined;
 }
 
-export interface FunctionEnv extends FunctionFetcher {
+export interface FunctionEnv extends FuncFetcher {
   readonly definition: DefinitionEnv;
 
   getValue(name: NameRoute): sapp.Expression;

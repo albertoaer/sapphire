@@ -1,9 +1,7 @@
-import { FetchedFuncResult, ModuleEnv, NameRoute, sapp } from "./common.ts";
+import { FetchedFuncResult, FuncFetcher, DefFetcher, NameRoute, sapp } from "./common.ts";
 
-export class ModuleInspector extends ModuleEnv {
-  constructor(private readonly module: sapp.Module) {
-    super();
-  }
+export class ModuleInspector implements FuncFetcher, DefFetcher {
+  constructor(private readonly module: sapp.Module) { }
 
   fetchDef(name: NameRoute): sapp.Def {
     const id = name.next;
@@ -18,16 +16,14 @@ export class ModuleInspector extends ModuleEnv {
   }
 }
 
-export class DefInspector extends ModuleEnv {
-  constructor(private readonly def: sapp.Def) {
-    super();
-  }
-
+export class DefInspector implements FuncFetcher, DefFetcher {
+  constructor(private readonly def: sapp.Def) { }
+  
   fetchDef(name: NameRoute): sapp.Def {
-    if (name.isNext) throw name.meta.error(`Cannot retrive a definition from a definition`);
+    if (name.isNext) throw name.meta.error(`Unexpected access: ${name.next}`);
     return this.def;
   }
-  
+
   fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult {
     return getDefFunc(this.def, name, inputSignature);
   }
@@ -39,7 +35,22 @@ function getDefFunc(def: sapp.Def, name: NameRoute, inputSignature: sapp.Type[])
   if (funcs) {
     const func = funcs.find(x => sapp.typeArrayEquals(x.inputSignature, inputSignature));
     if (func) return func;
-    return 'mismatch';
+    return { route: [def.name, id] };
   }
   throw name.meta.error(`Function ${id} does not exists on ${def.name}`);
+}
+
+export class InstancedDefInspector implements FuncFetcher {
+  constructor(private readonly def: sapp.Def, private readonly owner: sapp.Expression) { }
+
+  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult {
+    const id = name.isNext ? name.next : '';
+    const manyFuncs = this.def.instanceFuncs.get(id);
+    if (manyFuncs) {
+      const funcs = manyFuncs.find(x => sapp.typeArrayEquals(x[0].inputSignature, inputSignature));
+      if (funcs) return { funcs, owner: this.owner };
+      return { route: [this.def.name, id] };
+    }
+    throw name.meta.error(`Function ${id} does not exists on ${this.def.name}`);
+  }
 }

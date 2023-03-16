@@ -72,11 +72,10 @@ export class DefinitionGenerator implements DefinitionEnv, DefinitionBuilder {
 
   constructor(
     public readonly route: sapp.ModuleRoute,
-    public readonly name: string,
     readonly module: ModuleEnv,
     private readonly parsedDef: parser.Def
   ) {
-    this.def = new Definition(route, name, parsedDef.structs.length);
+    this.def = new Definition(route, parsedDef.name, parsedDef.structs.length);
     this.self = new sapp.Type(this.def);
     this.isPrivate = parsedDef.private;
     this.built = false;
@@ -92,7 +91,7 @@ export class DefinitionGenerator implements DefinitionEnv, DefinitionBuilder {
     const funcArr = this.functions.get(id); // Empty name method if no name provided
     if (funcArr) {
       const func = funcArr.find(x => sapp.typeArrayEquals(x.inputs, inputSignature));
-      if (!func) return 'mismatch';
+      if (!func) return { route: [this.def.name, id] };
       if (name.isNext) throw name.meta.error('Function Attributes');
       return func.func;
     }

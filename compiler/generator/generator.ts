@@ -1,11 +1,10 @@
-import { sapp, parser, DefinitionBuilder, ModuleEnv } from './common.ts';
+import { sapp, parser, Global } from './common.ts';
 import { Parser } from '../parser/parser.ts';
 import { TokenList } from '../parser/tokenizer.ts';
 import { ModuleGenerator } from "./module.ts";
 import { DependencyError } from '../errors.ts';
-import { DefinitionGenerator } from './definition.ts';
-import { EnsuredDefinitionGenerator } from './ensured_definition.ts';
 import { ModuleInspector, DefInspector } from './inspector.ts';
+import { DefaultDefFactory } from './factory.ts';
 
 export interface ModuleProvider {
   getRoute(descriptor: sapp.ModuleDescriptor): sapp.ModuleRoute;
@@ -22,8 +21,8 @@ export class Generator {
     this.kernel = kernel ?? undefined;
   }
 
-  private makeGlobals(dependencies: parser.Import[]): Map<string, ModuleEnv> {
-    const globals: Map<string, ModuleEnv> = new Map();
+  private makeGlobals(dependencies: parser.Import[]): Map<string, Global> {
+    const globals: Map<string, Global> = new Map();
     if (this.kernel) {
       this.kernel.defs.forEach((v,k) => globals.set(k, new DefInspector(v)));
       globals.set('kernel', new ModuleInspector(this.kernel));
@@ -50,21 +49,13 @@ export class Generator {
     return this.storedModules.get(route) as sapp.Module;
   }
 
-  private definitionBuilderFor(
-    route: sapp.ModuleRoute, name: string, env: ModuleEnv, def: Parser['definitions'][number]
-  ): DefinitionBuilder {
-    if (def.ensured) return new EnsuredDefinitionGenerator(route, name, env, def);
-    else return new DefinitionGenerator(route, name, env, def);
-  }
-
   generateModule(route: sapp.ModuleRoute, source: TokenList | string): sapp.Module {
     const parser = new Parser(typeof source === 'string' ? { source } : { tokens: source });
     parser.parse();
     const generator = new ModuleGenerator(this.makeGlobals(parser.dependencies));
-    for (const def of parser.definitions){
-      const builder = this.definitionBuilderFor(route, def.name, generator, def);
-      generator.set(def.name, builder, { exported: def.exported });
-    }
+    const builderFactory = new DefaultDefFactory(generator, route);
+    for (const def of parser.definitions)
+      generator.set(def.name, builderFactory.create(def), { exported: def.exported });
     return generator.build(route);
   }
 }

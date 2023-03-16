@@ -4,22 +4,22 @@ import {
 } from './common.ts';
 
 export class EnsuredDefinitionGenerator implements sapp.Def, DefinitionBuilder {
+  public readonly name: string;
   public readonly self: sapp.Type;
   public readonly def: sapp.Def = this;
   public readonly instanceOverloads = 0;
   public readonly isPrivate: boolean;
   public readonly funcs: Map<string, sapp.Func[]> = new Map();
   public readonly instanceFuncs: Map<string, sapp.Func[][]> = new Map();
+  
   private built: boolean;
-
-  private generated: sapp.Def | undefined = undefined;
   
   constructor(
     public readonly route: sapp.ModuleRoute,
-    public readonly name: string,
     private readonly env: ModuleEnv,
     private readonly parsedDef: parser.Def
   ) {
+    this.name = parsedDef.name;
     this.self = new sapp.Type(this);
     this.isPrivate = parsedDef.private;
     if (parsedDef.structs.length)

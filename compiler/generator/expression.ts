@@ -23,8 +23,8 @@ export class ExpressionGenerator {
       const searchRoute = route.clone();
       const fn = target.fetchFunc(searchRoute, types);
       if (!fn) continue;
-      if (fn === 'mismatch') throw meta.error(
-        `Signature error, ${route.consume().join('.')}(...) not defined for (${types.map(x => x.toString()).join(',')})`
+      if ('route' in fn) throw meta.error(
+        `Signature error, ${fn.route.join('.')}(...) not defined for (${types.map(x => x.toString()).join(',')})`
       );
       return fn;
     }
