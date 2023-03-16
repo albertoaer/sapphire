@@ -1,6 +1,6 @@
-import { sapp, parser, FunctionEnv, NameRoute, FetchedInstanceFunc } from './common.ts';
+import { sapp, parser, FunctionEnv, NameRoute, FetchedInstanceFunc, FuncMismatch } from './common.ts';
 import { MatchTypeError } from "../errors.ts";
-import { ParserMeta } from '../parser/common.ts';
+import { InstancedDefInspector } from './inspector.ts';
 
 export class ExpressionGenerator {
   private processed: sapp.Expression | null = null;
@@ -17,25 +17,46 @@ export class ExpressionGenerator {
     return { id: 'local_set', name, value: val, type: sapp.Void };
   }
 
-  private fetchFunction(route: NameRoute, types: sapp.Type[], meta: ParserMeta): sapp.Func | FetchedInstanceFunc {
+  private notFoundFunction(meta: parser.ParserMeta, route: NameRoute): never {
+    throw meta.error('Function not found: ' + route.toString());
+  }
+
+  private mismatchFunction(meta: parser.ParserMeta, inputs: sapp.Type[], mismatch: FuncMismatch): never {
+    throw meta.error(
+      `Signature error, ${mismatch.route.join('.')}(...) not defined for (${inputs.map(x => x.toString()).join(',')})`
+    );
+  }
+
+  private fetchFunction(
+    route: NameRoute, inputs: sapp.Type[]
+  ): sapp.Func | FetchedInstanceFunc {
     const targets = [this.env, this.env.definition, this.env.definition.module];
     for (const target of targets) {
       const searchRoute = route.clone();
-      const fn = target.fetchFunc(searchRoute, types);
+      const fn = target.fetchFunc(searchRoute, inputs);
       if (!fn) continue;
-      if ('route' in fn) throw meta.error(
-        `Signature error, ${fn.route.join('.')}(...) not defined for (${types.map(x => x.toString()).join(',')})`
-      );
+      if ('route' in fn) this.mismatchFunction(route.meta, inputs, fn);
       return fn;
     }
-    throw meta.error('Function not found: ' + route.toString());
+    throw this.notFoundFunction(route.meta, route);
+  }
+
+  private fetchInstanceFunction(
+    route: NameRoute, inputs: sapp.Type[], instance: sapp.Expression
+  ): sapp.Func | FetchedInstanceFunc {
+    const fn = InstancedDefInspector.create(instance.type, instance, route.meta).fetchFunc(route, inputs);
+    if (!fn) throw this.notFoundFunction(route.meta, route);
+    if ('route' in fn) this.mismatchFunction(route.meta, inputs, fn);
+    return fn;
   }
 
   private processCall(ex: parser.Expression & { id: 'call' }): sapp.Expression {
     const args = ex.args.map(x => this.processEx(x));
-    const func = this.fetchFunction(
-      new NameRoute(ex.name ?? { route: [], meta: ex.meta }), args.map(x => x.type), ex.meta
-    );
+    const route = new NameRoute(ex.name ?? { route: [], meta: ex.meta });
+    const inputs = args.map(x => x.type);
+    const func = ex.instance
+      ? this.fetchInstanceFunction(route, inputs, this.processEx(ex.instance))
+      : this.fetchFunction(route, inputs);
     this.dependencyPool.add('owner' in func ? func.funcs : func);
     return 'owner' in func
       ? { id: 'call_instanced', args, func: func.funcs, owner: func.owner, type: func.funcs[0].outputSignature } 

@@ -34,7 +34,7 @@ export class EnsuredDefinitionGenerator implements sapp.Def, DefinitionBuilder {
     const funcArr = this.funcs.get(id); // Empty name method if no name provided
     if (funcArr) {
       const func = funcArr.find(x => sapp.typeArrayEquals(x.inputSignature, inputSignature));
-      if (!func) return 'mismatch';
+      if (!func) return { route: [this.name, id] };
       if (name.isNext) throw name.meta.error('Function Attributes');
       return func;
     }

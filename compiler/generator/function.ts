@@ -153,13 +153,8 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
 
   fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult {
     const val = this.tryGet(name.next);
-    if (val) {
-      if(val.type.array) throw name.meta.error('Array has no function');
-      if (typeof val.type.base === 'object' && 'route' in val.type.base) {
-        return new InstancedDefInspector(val.type.base, val).fetchFunc(name, inputSignature);
-      }
-    }
-    return;
+    if (val)
+      return InstancedDefInspector.create(val.type, val, name.meta).fetchFunc(name, inputSignature);
   }
 
   getValue(name: NameRoute): sapp.Expression {
