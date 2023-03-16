@@ -1,8 +1,8 @@
 import {
-  parser, sapp, DefinitionEnv, FunctionEnv, FetchedInstanceFunc, FunctionBuilder, NameRoute
+  parser, sapp, DefinitionEnv, FunctionEnv, FunctionBuilder, NameRoute, FetchedFuncResult
 } from './common.ts';
 import { ExpressionGenerator } from './expression.ts';
-import { ParserError } from '../errors.ts';
+import { FeatureError, ParserError } from '../errors.ts';
 
 export class Parameters {
   constructor(private readonly params: [string | null, sapp.Type][]) { }
@@ -94,7 +94,7 @@ class Function implements sapp.Func {
   }
 }
 
-export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
+export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
   public readonly inputs: sapp.Type[];
   private readonly _expr: ExpressionGenerator;
   private readonly _func: Function;
@@ -106,16 +106,15 @@ export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
 
   constructor(
     func: parser.Func,
-    private readonly env: DefinitionEnv,
+    readonly definition: DefinitionEnv,
     public readonly isPrivate: boolean,
     output?: sapp.Type,
     struct?: sapp.Type[]
   ) {
-    super();
     if (!func.source) throw new ParserError(func.meta.line, 'Expecting function body');
-    const args = func.inputs.map(x => [x.name, this.resolveType(x.type)] as [string | null, sapp.Type]);
+    const args = func.inputs.map(x => [x.name, definition.module.resolveType(x.type)] as [string | null, sapp.Type]);
     if (struct) {
-      args.unshift(['this', this.env.self]);
+      args.unshift(['this', definition.self]);
       this._inst = new Parameters(struct.map((tp, i) => [func.struct![i].name, tp]));
     }
     this.inputs = args.map(x => x[1]);
@@ -123,18 +122,6 @@ export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
     this._expr = new ExpressionGenerator(this, func.source, this._deps);
     this._func = new Function(this.inputs, func.meta, this._deps, output, struct);
     this._treated = false;
-  }
-
-  fetchDef(name: NameRoute): sapp.Def {
-    return this.env.fetchDef(name);
-  }
-
-  get self(): sapp.Type {
-    return this.env.self;
-  }
-
-  structFor(types: sapp.Type[]): number | undefined {
-    return this.env.structFor(types);
   }
   
   scoped<T>(action: () => T): T {
@@ -163,6 +150,17 @@ export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
     }
   }
 
+  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult {
+    const val = this.tryGet(name.next);
+    if (val) {
+      if(val.type.array) throw name.meta.error('Array has no function');
+      if (typeof val.type.base === 'object' && 'route' in val.type.base) {
+        throw new FeatureError(name.meta.line,'Function Tables'); 
+      }
+    }
+    return;
+  }
+
   getValue(name: NameRoute): sapp.Expression {
     const id = name.next;
     const v = this.tryGet(id);
@@ -179,10 +177,6 @@ export class FunctionGenerator extends FunctionEnv implements FunctionBuilder {
       throw name.meta.error(`Already assigned a value to: ${id}`);
     if (name.isNext) throw name.meta.error(`Cannot get property: ${name.next}`);
     return this._lcls.insert(id, tp);
-  }
-
-  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
-    return this.env.fetchFunc(name, inputSignature);
   }
 
   generate() {

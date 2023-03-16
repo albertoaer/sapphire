@@ -1,4 +1,4 @@
-import { FetchedInstanceFunc, ModuleEnv, NameRoute, sapp } from "./common.ts";
+import { FetchedFuncResult, ModuleEnv, NameRoute, sapp } from "./common.ts";
 
 export class ModuleInspector extends ModuleEnv {
   constructor(private readonly module: sapp.Module) {
@@ -12,7 +12,7 @@ export class ModuleInspector extends ModuleEnv {
     return def;
   }
   
-  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
+  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult {
     const def = this.fetchDef(name);
     return getDefFunc(def, name, inputSignature);
   }
@@ -28,20 +28,18 @@ export class DefInspector extends ModuleEnv {
     return this.def;
   }
   
-  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
+  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult {
     return getDefFunc(this.def, name, inputSignature);
   }
 }
 
-function getDefFunc(def: sapp.Def, name: NameRoute, inputSignature: sapp.Type[]): sapp.Func {
+function getDefFunc(def: sapp.Def, name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult {
   const id = name.isNext ? name.next : '';
   const funcs = def.funcs.get(id);
   if (funcs) {
-    const func = funcs.find(
-      x => sapp.typeArrayEquals(x.inputSignature, inputSignature)
-    );
-    if (!func) throw name.meta.error(`Invalid signature for function ${def.name}.${id}(...)`);
-    return func;
+    const func = funcs.find(x => sapp.typeArrayEquals(x.inputSignature, inputSignature));
+    if (func) return func;
+    return 'mismatch';
   }
   throw name.meta.error(`Function ${id} does not exists on ${def.name}`);
 }

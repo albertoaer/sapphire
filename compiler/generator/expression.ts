@@ -1,5 +1,6 @@
-import { sapp, parser, FunctionEnv, NameRoute } from './common.ts';
-import { ParserError, MatchTypeError } from "../errors.ts";
+import { sapp, parser, FunctionEnv, NameRoute, FetchedInstanceFunc } from './common.ts';
+import { MatchTypeError } from "../errors.ts";
+import { ParserMeta } from '../parser/common.ts';
 
 export class ExpressionGenerator {
   private processed: sapp.Expression | null = null;
@@ -16,17 +17,33 @@ export class ExpressionGenerator {
     return { id: 'local_set', name, value: val, type: sapp.Void };
   }
 
+  private fetchFunction(route: NameRoute, types: sapp.Type[], meta: ParserMeta): sapp.Func | FetchedInstanceFunc {
+    const targets = [this.env, this.env.definition, this.env.definition.module];
+    for (const target of targets) {
+      const searchRoute = route.clone();
+      const fn = target.fetchFunc(searchRoute, types);
+      if (!fn) continue;
+      if (fn === 'mismatch') throw meta.error(
+        `Signature error, ${route.consume().join('.')}(...) not defined for (${types.map(x => x.toString()).join(',')})`
+      );
+      return fn;
+    }
+    throw meta.error('Function not found: ' + route.toString());
+  }
+
   private processCall(ex: parser.Expression & { id: 'call' }): sapp.Expression {
     const args = ex.args.map(x => this.processEx(x));
-    const func = this.env.fetchFunc(new NameRoute(ex.name ?? { route: [], meta: ex.meta }), args.map(x => x.type));
-    this.dependencyPool.add('owner' in func ? func.funcGroup : func);
+    const func = this.fetchFunction(
+      new NameRoute(ex.name ?? { route: [], meta: ex.meta }), args.map(x => x.type), ex.meta
+    );
+    this.dependencyPool.add('owner' in func ? func.funcs : func);
     return 'owner' in func
-      ? { id: 'call_instanced', args, func: func.funcGroup, owner: func.owner, type: func.funcGroup[0].outputSignature } 
+      ? { id: 'call_instanced', args, func: func.funcs, owner: func.owner, type: func.funcs[0].outputSignature } 
       : { id: 'call', args, func, type: func.outputSignature };
   }
   
   private processGroup({ exprs, meta }: parser.Expression & { id: 'group' }): sapp.Expression {
-    if (exprs.length === 0) throw new ParserError(meta.line, 'Empty group');
+    if (exprs.length === 0) throw meta.error('Empty group');
     const group = this.env.scoped(() => exprs.map(x => this.processEx(x)));
     return { id: 'group', exprs: group.map(x => x), type: group.at(-1)?.type! };
   }
@@ -42,15 +59,15 @@ export class ExpressionGenerator {
 
   private processTuple({ exprs, meta }: parser.Expression & { id: 'tuple_literal' }): sapp.Expression {
     const items = exprs.map(x => this.processEx(x));
-    if (items.length === 0) throw new ParserError(meta.line, 'Tuple with 0 elements is invalid');
+    if (items.length === 0) throw meta.error('Tuple with 0 elements is invalid');
     return { id: 'tuple_literal', exprs: items, type: new sapp.Type(items.map(x => x.type)) };
   }
   
   private processList({ exprs, meta }: parser.Expression & { id: 'list_literal' }): sapp.Expression {
     const items = exprs.map(x => this.processEx(x));
     if (!items.every((x, i) => i === 0 || x.type.isEquals(items[i-1].type)))
-      throw new ParserError(meta.line, 'Every element in a list must have the same type');
-    if (items.length === 0) throw new ParserError(meta.line, 'Empty list\' type can not be inferred');
+      throw meta.error('Every element in a list must have the same type');
+    if (items.length === 0) throw meta.error('Empty list\' type can not be inferred');
     return { id: 'list_literal', exprs: items, type: new sapp.Type(items[0].type, 'auto') };
   }
   
@@ -64,10 +81,10 @@ export class ExpressionGenerator {
 
   private processBuild({ args, meta }: parser.Expression & { id: 'build' }): sapp.Expression {
     const params = args.map(x => this.processEx(x));
-    const structIdx = this.env.structFor(params.map(x => x.type));
+    const structIdx = this.env.definition.structFor(params.map(x => x.type));
     if (structIdx === undefined)
-      throw new ParserError(meta.line, 'Cannot find a struct to build a instance');
-    return { id: 'build', args: params, structIdx, type: this.env.self };
+      throw meta.error('Cannot find a struct to build a instance');
+    return { id: 'build', args: params, structIdx, type: this.env.definition.self };
   }
 
   private processNone(_: parser.Expression & { id: 'none' }): sapp.Expression {

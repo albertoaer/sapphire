@@ -51,10 +51,10 @@ export class Generator {
   }
 
   private definitionBuilderFor(
-    header: sapp.DefHeader, env: ModuleEnv, def: Parser['definitions'][number]
+    route: sapp.ModuleRoute, name: string, env: ModuleEnv, def: Parser['definitions'][number]
   ): DefinitionBuilder {
-    if (def.ensured) return new EnsuredDefinitionGenerator(header, env, def);
-    else return new DefinitionGenerator(header, env, def);
+    if (def.ensured) return new EnsuredDefinitionGenerator(route, name, env, def);
+    else return new DefinitionGenerator(route, name, env, def);
   }
 
   generateModule(route: sapp.ModuleRoute, source: TokenList | string): sapp.Module {
@@ -62,7 +62,7 @@ export class Generator {
     parser.parse();
     const generator = new ModuleGenerator(this.makeGlobals(parser.dependencies));
     for (const def of parser.definitions){
-      const builder = this.definitionBuilderFor({ route, name: def.name }, generator, def);
+      const builder = this.definitionBuilderFor(route, def.name, generator, def);
       generator.set(def.name, builder, { exported: def.exported });
     }
     return generator.build(route);

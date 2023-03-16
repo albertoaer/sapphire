@@ -1,24 +1,22 @@
-import { ModuleEnv, sapp, FetchedInstanceFunc, DefinitionBuilder, NameRoute } from "./common.ts";
+import { ModuleEnv, sapp, FetchedFuncResult, DefinitionBuilder, NameRoute } from "./common.ts";
 
 export type DefConfig = { exported: boolean }
 
 export class ModuleGenerator extends ModuleEnv {
   private generated: sapp.Module | undefined = undefined;
   private readonly defs: Map<string, DefinitionBuilder> = new Map();
-  private readonly processed: Set<DefinitionBuilder> = new Set();
   private readonly exported: DefinitionBuilder[] = [];
 
-  constructor(private readonly globals: Map<string, ModuleEnv>) {
+  constructor(
+    private readonly globals: Map<string, ModuleEnv>
+  ) {
     super();
   }
 
   private localDef(id: string): DefinitionBuilder | undefined {
     const def = this.defs.get(id);
     if (def) {
-      if (!this.processed.has(def)) {
-        this.processed.add(def);
-        def.build();
-      }
+      def.build();
       return def;
     }
   }
@@ -28,20 +26,22 @@ export class ModuleGenerator extends ModuleEnv {
     const def = this.localDef(id);
     if (def) {
       if (name.isNext) throw name.meta.error('Trying to fetch def, no inner property');
-      return def.build();
+      return def.def;
     }
     const global = this.globals.get(id);
     if (!global) throw name.meta.error(`Symbol not found: ${id}`);
     return global.fetchDef(name);
   }
 
-  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
-    const id = name.next;
-    const def = this.localDef(id);
-    if (def) return def.fetchFunc(name, inputSignature);
-    const global = this.globals.get(id);
-    if (!global) throw name.meta.error(`Symbol not found, ${id}`);
-    return global.fetchFunc(name, inputSignature);
+  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult {
+    if (name.isNext) {
+      const id = name.next;
+      const def = this.localDef(id);
+      if (def) return def.fetchFunc(name, inputSignature);
+      const global = this.globals.get(id);
+      if (!global) throw name.meta.error(`Symbol not found, ${id}`);
+      return global.fetchFunc(name, inputSignature);
+    }
   }
 
   set(name: string, def: DefinitionBuilder, config: DefConfig) {
@@ -55,10 +55,10 @@ export class ModuleGenerator extends ModuleEnv {
       this.generated = {
         route,
         defs: new Map(Array.from(this.defs.entries()).filter(([_, d]) => !d.isPrivate).map(([n, d]) => {
-          this.processed.add(d);
-          return [n, d.build()];
+          d.build();
+          return [n, d.def];
         })),
-        exports: this.exported.map(x => x.build())
+        exports: this.exported.map(x => x.def)
       };
     return this.generated;
   }

@@ -2,36 +2,23 @@ import * as parser from '../parser/common.ts';
 export * as parser from '../parser/common.ts';
 import * as sapp from '../sapp.ts';
 export * as sapp from '../sapp.ts';
+import { NameRoute } from './utils.ts';
+export * from './utils.ts';
 
-export class NameRoute {
-  private current = 0;
+export type FetchedInstanceFunc = { funcs: sapp.Func[], owner: sapp.Expression }
 
-  constructor(private readonly route: parser.ParserRoute) { }
+export type FetchedFuncResult = sapp.Func | FetchedInstanceFunc | 'mismatch' | undefined;
 
-  get meta(): parser.ParserMeta {
-    return this.route.meta;
-  }
-
-  get isNext(): boolean {
-    return !!this.route.route[this.current];
-  }
-
-  get next(): string {
-    if (!this.isNext) throw this.meta.error('Empty route');
-    return this.route.route[this.current++];
-  }
-
-  discardOne() {
-    if (this.current <= 0) throw this.meta.error('Invalid route manipulation');
-    this.current--;
-  }
+export interface FunctionFetcher {
+  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult;
 }
 
-export interface DefinitionBuilder {
+export interface DefinitionBuilder extends FunctionFetcher {
+  readonly def: sapp.Def;
   readonly self: sapp.Type;
   readonly isPrivate: boolean;
-  build(): sapp.Def;
-  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc;
+
+  build(): void;
 }
 
 export interface FunctionBuilder {
@@ -40,12 +27,10 @@ export interface FunctionBuilder {
   readonly inputs: sapp.Type[];
 }
 
-export type FetchedInstanceFunc = {
-  funcGroup: sapp.Func[],
-  owner: sapp.Expression
-}
+export abstract class ModuleEnv implements FunctionFetcher {
+  abstract fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult;
+  abstract fetchDef(name: NameRoute): sapp.Def;
 
-export abstract class ModuleEnv {
   resolveType(tp: parser.Type): sapp.Type {
     const array = tp.array ? (tp.array.size ?? sapp.ArraySizeAuto) : undefined;
     if ('type' in tp.base) return new sapp.Type(tp.base.type, array);
@@ -74,19 +59,20 @@ export abstract class ModuleEnv {
   
     return new sapp.Type(this.fetchDef(new NameRoute(tp.base)), array);
   }
-
-  abstract fetchDef(name: NameRoute): sapp.Def;
-  abstract fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc;
 }
 
-export abstract class DefinitionEnv extends ModuleEnv {
-  abstract readonly self: sapp.Type;
-  abstract structFor(types: sapp.Type[]): number | undefined;
+export interface DefinitionEnv extends FunctionFetcher {
+  readonly module: ModuleEnv;
+
+  readonly self: sapp.Type;
+  structFor(types: sapp.Type[]): number | undefined;
 }
 
-export abstract class FunctionEnv extends DefinitionEnv {
-  abstract getValue(name: NameRoute): sapp.Expression;
-  abstract setValue(name: NameRoute, tp: sapp.Type): number;
+export interface FunctionEnv extends FunctionFetcher {
+  readonly definition: DefinitionEnv;
 
-  abstract scoped<T>(action: () => T): T;
+  getValue(name: NameRoute): sapp.Expression;
+  setValue(name: NameRoute, tp: sapp.Type): number;
+
+  scoped<T>(action: () => T): T;
 }

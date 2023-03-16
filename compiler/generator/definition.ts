@@ -1,10 +1,21 @@
 import {
-  sapp, parser, ModuleEnv, FetchedInstanceFunc, DefinitionEnv,
+  sapp, parser, ModuleEnv, FetchedFuncResult, DefinitionEnv,
   DefinitionBuilder, FunctionBuilder, NameRoute
 } from './common.ts';
 import { FunctionGenerator } from './function.ts';
 import { ParserError } from '../errors.ts';
 import { ParserMeta } from '../parser/common.ts';
+
+class Definition implements sapp.Def {
+  public readonly funcs: Map<string, sapp.Func[]> = new Map();
+  public readonly instanceFuncs: Map<string, sapp.Func[][]> = new Map();
+
+  constructor(
+    public readonly route: sapp.ModuleRoute,
+    public readonly name: string,
+    public readonly instanceOverloads: number
+  ) { }
+}
 
 class InstanceFunction {
   // Each index is a struct
@@ -47,30 +58,28 @@ class InstanceFunction {
   }
 }
 
-export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuilder {
+export class DefinitionGenerator implements DefinitionEnv, DefinitionBuilder {
   private readonly structs: sapp.Type[][] = [];
   
   // Functions under a name always have different input signature
   private readonly functions: Map<string, FunctionBuilder[]> = new Map();
   private readonly instanceFunctions: Map<string, InstanceFunction[]> = new Map();
 
-  public readonly self: sapp.Type;
-  public readonly isPrivate: boolean;
-  
-  private generated: sapp.Def | undefined = undefined;
+  public readonly def: Definition; // The definition itself
+  public readonly self: sapp.Type; // The definition wrapped into a type
+  public readonly isPrivate: boolean; // Wether the definition is declared private
+  public built: boolean; // Is the definition already built
 
   constructor(
-    public readonly header: sapp.DefHeader,
-    private readonly env: ModuleEnv,
-    private readonly def: parser.Def
+    public readonly route: sapp.ModuleRoute,
+    public readonly name: string,
+    readonly module: ModuleEnv,
+    private readonly parsedDef: parser.Def
   ) {
-    super();
-    this.self = new sapp.Type(header);
-    this.isPrivate = def.private;
-  }
-
-  fetchDef(name: NameRoute): sapp.Def {
-    return this.env.fetchDef(name);
+    this.def = new Definition(route, name, parsedDef.structs.length);
+    this.self = new sapp.Type(this.def);
+    this.isPrivate = parsedDef.private;
+    this.built = false;
   }
 
   structFor(types: sapp.Type[]): number | undefined {
@@ -78,28 +87,26 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
     return idx < 0 ? undefined : idx;
   }
 
-  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): sapp.Func | FetchedInstanceFunc {
+  fetchFunc(name: NameRoute, inputSignature: sapp.Type[]): FetchedFuncResult {
     const id = name.isNext ? name.next : '';
     const funcArr = this.functions.get(id); // Empty name method if no name provided
     if (funcArr) {
       const func = funcArr.find(x => sapp.typeArrayEquals(x.inputs, inputSignature));
-      if (!func) throw name.meta.error(`Invalid signature for function ${this.def.name}.${id}(...)`);
+      if (!func) return 'mismatch';
       if (name.isNext) throw name.meta.error('Function Attributes');
       return func.func;
     }
-    if (id) name.discardOne();
-    return this.env.fetchFunc(name, inputSignature);
   }
 
   private generateStruct = (pre: parser.Struct) => {
-    const struct: sapp.Type[] = pre.types.map(x => this.resolveType(x));
+    const struct: sapp.Type[] = pre.types.map(x => this.module.resolveType(x));
     if (this.structs.find(x => sapp.typeArrayEquals(x, struct)))
       throw new ParserError(pre.meta.line, 'Repeated struct');
     this.structs.push(struct);
   }
 
   private resolveStructIndex(heuristic: parser.HeuristicList, line: number): number {
-    const types = heuristic.map(x => x.type ? this.resolveType(x.type) : null);
+    const types = heuristic.map(x => x.type ? this.module.resolveType(x.type) : null);
     const factible = this.structs.map((x, i) => [x, i]  as [sapp.Type[], number]).filter(
       ([x, _]) => x.length === heuristic.length
         && x.every((t, i) => types[i] === null || t.isEquals(types[i] as sapp.Type))
@@ -133,7 +140,7 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
   
   private generateFunction = (pre: parser.Func) => {
     const structIdx = pre.struct !== undefined ? this.resolveStructIndex(pre.struct, pre.meta.line) : undefined;
-    const output = pre.output ? this.resolveType(pre.output) : undefined;
+    const output = pre.output ? this.module.resolveType(pre.output) : undefined;
     const func = new FunctionGenerator(
       pre, this, pre.private, output, structIdx !== undefined ? this.structs[structIdx] : undefined
     );
@@ -142,27 +149,22 @@ export class DefinitionGenerator extends DefinitionEnv implements DefinitionBuil
   }
 
   private extendDef = (route: parser.ParserRoute) => {
-    const def = this.env.fetchDef(new NameRoute(route));
+    const def = this.module.fetchDef(new NameRoute(route));
     def.funcs.forEach((v, k) => {
       this.functions.set(k, v.map(v => { return { func: v, isPrivate: false, inputs: v.inputSignature }; }));
     });
   }
 
-  build(): sapp.Def {
-    if (!this.generated) {
-      const funcs = new Map();
-      const instanceFuncs = new Map();
-      this.generated = { ...this.header, funcs, instanceFuncs, instanceOverloads: this.def.structs.length };
-      this.def.extensions.forEach(this.extendDef);
-      this.def.structs.forEach(this.generateStruct);
-      this.def.functions.forEach(this.generateFunction);
-      this.functions.forEach(
-        (f, n) => funcs.set(n, f.filter(f => !f.isPrivate).map(f => f.func))
-      );
-      this.instanceFunctions.forEach(
-        (f, n) => instanceFuncs.set(n, f.filter(f => !f.isPrivate).map(f => f.functions))
-      );
+  build() {
+    if (!this.built) {
+      this.built = true;
+      this.parsedDef.extensions.forEach(this.extendDef);
+      this.parsedDef.structs.forEach(this.generateStruct);
+      this.parsedDef.functions.forEach(this.generateFunction);
+      for (const [n, f] of this.functions)
+        this.def.funcs.set(n, f.filter(f => !f.isPrivate).map(f => f.func))
+      for (const [n, f] of this.instanceFunctions)
+        this.def.instanceFuncs.set(n, f.filter(f => !f.isPrivate).map(f => f.functions))
     }
-    return this.generated;
   }
 }

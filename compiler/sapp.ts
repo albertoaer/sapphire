@@ -65,7 +65,7 @@ export type Expression = ({
 export const ArraySizeAuto = 'auto'
 
 export class Type {
-  readonly base: DefHeader | Type | Type[] | NativeType | 'void' | `literal:${string}` | 'any';
+  readonly base: Def | Type | Type[] | NativeType | 'void' | `literal:${string}` | 'any';
   readonly array?: number | typeof ArraySizeAuto;
 
   constructor(base: Type['base'], array?: Type['array']) {
@@ -141,12 +141,10 @@ export function isRouteFunc(func: Func): func is Func<FunctionRoute> {
   return Array.isArray(func.source);
 }
 
-export interface DefHeader {
+export interface Def {
   readonly route: ModuleRoute;
   readonly name: string;
-}
 
-export interface Def extends DefHeader {
   readonly instanceOverloads: number;
 
   readonly funcs: Map<string, Func[]>;
