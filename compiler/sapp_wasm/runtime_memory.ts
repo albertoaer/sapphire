@@ -49,7 +49,8 @@ export class MemoryManager {
       this.blocks[block_index].size = size;
       this.blocks[block_index].used = true;
 
-      this.blocks.push({ size: old_size - size, used: false, offset: size });
+      console.log(this.blocks[block_index].offset)
+      this.blocks.push({ size: old_size - size, used: false, offset: this.blocks[block_index].offset + size });
 
       return this.blocks[block_index].offset;
     } else {
