@@ -1,5 +1,5 @@
 import { CompilerError } from '../errors.ts';
-import { encodeString, encodeVector, unsignedLEB128 } from "./encoding.ts";
+import { encodeString, encodeVector, unsignedLEB128 } from "./encodings.ts";
 import { WasmExpression } from './expressions.ts';
 
 export const magicModuleHeader = [0x00, 0x61, 0x73, 0x6d];

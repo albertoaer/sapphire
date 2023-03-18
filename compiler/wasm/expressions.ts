@@ -1,6 +1,6 @@
 import { CompilerError } from '../errors.ts';
 import { WasmType } from './module.ts';
-import { signedLEB128, unsignedLEB128, ieee754 } from './encoding.ts';
+import { signedLEB128, unsignedLEB128, ieee754 } from './encodings.ts';
 
 export class WasmExpression {
   private readonly data: number[]

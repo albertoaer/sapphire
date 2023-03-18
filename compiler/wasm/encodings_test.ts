@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.174.0/testing/asserts.ts";
-import { ieee754 } from './encoding.ts';
+import { ieee754 } from './encodings.ts';
 
 Deno.test('ieee754', () => {
   assertEquals(ieee754(-3748, 32), [0, 0x40, 0x6a, 0xc5]);
