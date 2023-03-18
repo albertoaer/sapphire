@@ -136,7 +136,7 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
   instance(): sapp.Expression | undefined {
     if (this._inst) {
       const instance = this._prms.getByIndex(0);
-      return { id: 'local_get', name: 0, type: instance };
+      return { id: 'param_get', name: 0, type: instance };
     }
   }
 
