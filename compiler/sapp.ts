@@ -87,7 +87,7 @@ export class Type {
     if (typeof this.base === 'string' || typeof tp.base === 'string') return this.base === tp.base;
     if ('route' in this.base) {
       if (!('route' in tp.base)) return false;
-      return this.base.route === tp.base.route && tp.base.name === tp.base.name;
+      return this.base.route === tp.base.route && this.base.name === tp.base.name;
     }
     if ('route' in tp.base) return false;
     if (Array.isArray(this.base)) {
