@@ -1,11 +1,7 @@
 import { CompilerError } from '../errors.ts';
 import { WasmModule, WasmType, WasmExpression, WasmTypeBytes, encodings } from '../wasm/mod.ts';
 import { duplicate } from './utils.ts';
-
-const ModName = 'KernelMemory';
-const MountedMemory = 'memory';
-const FnAllocateName = 'alloc';
-export const MemoryExportName = `${ModName} ${MountedMemory}`;
+import { ModName, MountedMemory, MemoryExportName, FnAllocateName } from './runtime_memory.ts';
 
 /**
  * Provide functions to compile memory features of the language
@@ -15,7 +11,11 @@ export class MemoryHelper {
 
   constructor(module: WasmModule, setMemory: boolean = true) {
     if (setMemory)
-      module.configureMemory({ limits: { min: 1 }, import: { mod: ModName, name: MountedMemory }, exportAs: MemoryExportName });
+      module.configureMemory({
+        limits: { min: 1 },
+        import: { mod: ModName, name: MountedMemory },
+        exportAs: MemoryExportName
+      });
     this.alloc = module.import(ModName, FnAllocateName, [WasmType.I32], [WasmType.I32]);
   }
 
@@ -113,25 +113,5 @@ export class MemoryHelper {
       compSz += sz;
     }
     return new WasmExpression(0x41, ...encodings.signedLEB128(compSz), 0x6A).pushExpr(this.readItem(tp[pos]));
-  }
-}
-
-/**
- * The actual memory functionalities for the vm
- */
-export class MemoryManager {
-  constructor(private readonly memory: WebAssembly.Memory) { }
-
-  static createAndPlace(imports: WebAssembly.Imports) {
-    const memory = new WebAssembly.Memory({ initial: 1 });
-    const mm = new MemoryManager(memory);
-    imports[ModName] = {
-      [MountedMemory]: memory,
-      [FnAllocateName]: mm.allocate
-    }
-  }
-
-  allocate = (tam: number): number => {
-    throw new Error('Not implemented');
   }
 }
