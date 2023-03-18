@@ -1,5 +1,6 @@
 import { sapp, wasm, convertToWasmType, ResolvedFunction, FunctionTableInfo, FunctionInjector } from "./common.ts";
 import { CompilerError } from "../errors.ts";
+import { Locals, DefaultLocals } from './locals.ts';
 
 export interface FunctionResolutor {
   useFunc(func: sapp.Func): ResolvedFunction;
@@ -14,12 +15,19 @@ function signatureOf(func: sapp.Func): [wasm.WasmType[], wasm.WasmType[]] {
 }
 
 export class FunctionBind {
-  constructor(private readonly func: sapp.Func<sapp.Expression>, private readonly wfunc: wasm.WasmFunction) { }
+  constructor(
+    private readonly func: sapp.Func<sapp.Expression>,
+    private readonly wfunc: wasm.WasmFunction,
+    private readonly signature: [wasm.WasmType[], wasm.WasmType[]]
+  ) { }
 
-  build(apply: (expr: sapp.Expression, locals: wasm.WasmType[]) => Uint8Array) {
-    const locals = this.func.locals ? this.func.locals.map(convertToWasmType) : [];
+  build(apply: (expr: sapp.Expression, locals: Locals) => Uint8Array) {
+    const locals = new DefaultLocals(
+      this.func.locals ? this.func.locals.map(convertToWasmType) : [],
+      this.signature[0].length
+    );
     const code = apply(this.func.source, locals);
-    this.wfunc.body = { locals, code };
+    this.wfunc.body = { locals: locals.locals, code };
   }
 
   get completed(): boolean {
@@ -60,7 +68,7 @@ export class FunctionCollector {
       const signature = signatureOf(func);
       const wfunc = this.module.define(signature[0], signature[1]);
       this.functions.set(func, wfunc);
-      this.defined.push(new FunctionBind(func as sapp.Func<sapp.Expression>, wfunc));
+      this.defined.push(new FunctionBind(func as sapp.Func<sapp.Expression>, wfunc, signature));
     }
     
     // Dependencies are processed after function to prevent loops

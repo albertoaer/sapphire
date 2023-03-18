@@ -1,49 +1,18 @@
-import { CompilerError } from '../errors.ts';
 import { sapp, wasm, convertToWasmType } from './common.ts';
+import { CompilerError } from '../errors.ts';
 import type { FunctionResolutor } from './functions.ts';
 import { MemoryHelper } from './memory.ts';
-import { buildStructuredType } from './utils.ts';
-
-export class LocalsInfo {
-  private readonly aux: [wasm.WasmType, boolean][] = [];
-  private readonly localsBaseSize: number;
-
-  constructor(private readonly locals: wasm.WasmType[]) {
-    this.localsBaseSize = locals.length;
-  }
-
-  requireAux(tp: wasm.WasmType): number {
-    for (let i = 0; i < this.aux.length; i++) {
-      if (this.aux[i][0] == tp && !this.aux[i][1]) {
-        this.aux[i][1] = true;
-        return i + this.locals.length;
-      }
-    }
-    this.aux.push([tp, true]);
-    return this.locals.push(tp) - 1;
-  }
-
-  freeAux(idx: number) {
-    this.aux[idx - this.localsBaseSize][1] = false;
-  }
-
-  at(idx: number): wasm.WasmType | undefined {
-    return this.locals[idx];
-  }
-}
+import { Locals } from './locals.ts';
+import { buildStructuredType, duplicate, getLow32 } from './utils.ts';
 
 export class ExpressionCompiler {
   public readonly expression = new wasm.WasmExpression();
-  private readonly locals: LocalsInfo;
 
   constructor(
     private readonly resolutor: FunctionResolutor,
-    locals: wasm.WasmType[] | LocalsInfo,
+    private readonly locals: Locals,
     private readonly memory: MemoryHelper
-  ) {
-    if (locals instanceof LocalsInfo) this.locals = locals;
-    else this.locals = new LocalsInfo(locals);
-  }
+  ) { }
 
   private fastProcess(ex: sapp.Expression): wasm.WasmExpression {
     const comp = new ExpressionCompiler(this.resolutor, this.locals, this.memory);
@@ -63,6 +32,18 @@ export class ExpressionCompiler {
       this.expression.pushRaw(0x10);
       this.expression.pushNumber(resolved, 'uint', 32);
     }
+  }
+
+  private processCallInstanced({ args, func, owner }: sapp.Expression & { id: 'call_instanced' }) {
+    const resolved = this.resolutor.useFuncTable(func);
+    for (const arg of args) this.expression.pushExpr(this.fastProcess(arg));
+    const aux = this.locals.requireAux(wasm.WasmType.I64);
+    this.expression.pushExpr(this.fastProcess(owner)).pushRaw(
+      ...duplicate(this.locals.wrap(aux)),
+      ...getLow32(), 0x11,
+      ...wasm.encodings.unsignedLEB128(resolved.typeIdx), ...wasm.encodings.unsignedLEB128(resolved.tableIdx)
+    );
+    this.locals.freeAux(aux);
   }
 
   private processIf(ex: sapp.Expression & { id: 'if' }) {
@@ -114,8 +95,8 @@ export class ExpressionCompiler {
     const encoded = wasm.encodings.encodeString(value);
     const getAddress = this.memory.allocate(encoded.length);
     const aux = this.locals.requireAux(wasm.WasmType.I32);
-    this.expression.pushExpr(getAddress).pushRaw(0x22, aux, 0x20, aux);
-    this.expression.pushExpr(this.memory.copyBuffer(encoded, aux));
+    this.expression.pushExpr(getAddress).pushRaw(...duplicate(this.locals.wrap(aux)));
+    this.expression.pushExpr(this.memory.copyBuffer(encoded, this.locals.wrap(aux)));
     this.locals.freeAux(aux);
   }
 
@@ -125,8 +106,8 @@ export class ExpressionCompiler {
     if (sz === undefined) throw new CompilerError('Wasm', 'Cannot compute undefined size');
     const getAddress = this.memory.allocate(sz * exprs.length);
     const aux = this.locals.requireAux(wasm.WasmType.I32);
-    this.expression.pushExpr(getAddress).pushRaw(0x22, aux, 0x20, aux);
-    this.expression.pushExpr(this.memory.copySame(exprs.map(x => this.fastProcess(x)), tp, aux));
+    this.expression.pushExpr(getAddress).pushRaw(...duplicate(this.locals.wrap(aux)));
+    this.expression.pushExpr(this.memory.copySame(exprs.map(x => this.fastProcess(x)), tp, this.locals.wrap(aux)));
     this.locals.freeAux(aux);
   }
 
@@ -142,8 +123,8 @@ export class ExpressionCompiler {
     }
     const getAddress = this.memory.allocate(sz);
     const aux = this.locals.requireAux(wasm.WasmType.I32);
-    this.expression.pushExpr(getAddress).pushRaw(0x22, aux, 0x20, aux);
-    this.expression.pushExpr(this.memory.copy(mapped, aux));
+    this.expression.pushExpr(getAddress).pushRaw(...duplicate(this.locals.wrap(aux)));
+    this.expression.pushExpr(this.memory.copy(mapped, this.locals.wrap(aux)));
     this.locals.freeAux(aux);
   }
 
@@ -156,6 +137,9 @@ export class ExpressionCompiler {
     switch (ex.id) {
       case 'call': 
         this.processCall(ex);
+        break;
+      case 'call_instanced':
+        this.processCallInstanced(ex);
         break;
       case 'if':
         this.processIf(ex);

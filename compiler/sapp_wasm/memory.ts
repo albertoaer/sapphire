@@ -1,5 +1,6 @@
 import { CompilerError } from '../errors.ts';
 import { WasmModule, WasmType, WasmExpression, WasmTypeBytes } from '../wasm/mod.ts';
+import { duplicate } from './utils.ts';
 
 const ModName = 'KernelMemory';
 const MountedMemory = 'memory';
@@ -46,7 +47,7 @@ export class MemoryHelper {
       const [expr, tp] = values[i];
       const sz = WasmTypeBytes[tp];
       if (!sz) throw new CompilerError('Wasm', 'Cannot compute undefined size');
-      if (i < values.length - 1) final.pushRaw(0x22, aux, 0x20, aux);
+      if (i < values.length - 1) final.pushRaw(...duplicate(aux));
       final.pushExpr(this.copyItem(expr, tp));
       if (i < values.length - 1) final.pushRaw(0x41).pushNumber(sz, 'int', 32).pushRaw(0x6A);
     }
@@ -61,7 +62,7 @@ export class MemoryHelper {
     const sz = WasmTypeBytes[tp];
     if (!sz) throw new CompilerError('Wasm', 'Cannot compute undefined size')
     for (let i = 0; i < values.length; i++) {
-      if (i < values.length - 1) final.pushRaw(0x22, aux, 0x20, aux);
+      if (i < values.length - 1) final.pushRaw(...duplicate(aux));
       final.pushExpr(this.copyItem(values[i], tp));
       if (i < values.length - 1) final.pushRaw(0x41).pushNumber(sz, 'int', 32).pushRaw(0x6A);
     }
@@ -74,7 +75,7 @@ export class MemoryHelper {
   copyBuffer(buffer: Uint8Array, aux: number): WasmExpression {
     const final = new WasmExpression();
     for (let i = 0; i < buffer.length; i++) {
-      if (i < buffer.length - 1) final.pushRaw(0x22, aux, 0x20, aux);
+      if (i < buffer.length - 1) final.pushRaw(...duplicate(aux));
       final.pushRaw(0x41).pushNumber(buffer[i], 'int', 32).pushRaw(0x36, 0, 0);
       if (i < buffer.length - 1) final.pushRaw(0x41).pushNumber(1, 'int', 32).pushRaw(0x6A);
     }

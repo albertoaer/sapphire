@@ -1,5 +1,9 @@
 import { encodings } from '../wasm/mod.ts';
 
+export function duplicate(aux: number): Uint8Array {
+  return new Uint8Array([0x22, aux, 0x20, aux]);
+}
+
 export function getLow32(): Uint8Array {
   return new Uint8Array([0xA7]);
 }
