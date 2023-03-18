@@ -14,13 +14,24 @@ Deno.test('sample module', async () => {
 });
 
 Deno.test('locals', async () => {
-  const module = new WasmModule();
-  module.define([WasmType.I32, WasmType.I32], [WasmType.I32], { export: 'dupsum' }).body = {
-    code: new WasmExpression(0x20, 0, 0x21, 1, 0x20, 1, 0x20, 1, 0x6A),
-    locals: [WasmType.I32]
-  };
-  const { instance } = await WebAssembly.instantiate(module.code);
-  assertEquals((instance.exports.dupsum as CallableFunction)(20), 40);
+  {
+    const module = new WasmModule();
+    module.define([WasmType.I32], [WasmType.I32], { export: 'dupsum' }).body = {
+      code: new WasmExpression(0x20, 0, 0x21, 1, 0x20, 1, 0x20, 1, 0x6A),
+      locals: [WasmType.I32]
+    };
+    const { instance } = await WebAssembly.instantiate(module.code);
+    assertEquals((instance.exports.dupsum as CallableFunction)(20), 40);
+  }
+  {
+    const module = new WasmModule();
+    module.define([WasmType.I32, WasmType.I32], [WasmType.I32], { export: 'retsum' }).body = {
+      code: new WasmExpression(0x20, 0, 0x20, 1, 0x6A, 0x21, 2, 0x20, 2),
+      locals: [WasmType.I32]
+    };
+    const { instance } = await WebAssembly.instantiate(module.code);
+    assertEquals((instance.exports.retsum as CallableFunction)(20, 30), 50);
+  }
 });
 
 Deno.test('tables', async () => {
