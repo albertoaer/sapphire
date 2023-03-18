@@ -9,7 +9,7 @@ export function getLow32(): Uint8Array {
 }
 
 export function getHigh32(): Uint8Array {
-  return new Uint8Array([0x42, 32, 0x87]);
+  return new Uint8Array([0x42, 32, 0x87, 0xA7]);
 }
 
 /**
