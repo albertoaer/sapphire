@@ -3,7 +3,7 @@ import { CompilerError } from '../errors.ts';
 import type { FunctionResolutor } from './functions.ts';
 import { MemoryHelper } from './memory.ts';
 import { Locals } from './locals.ts';
-import { buildStructuredType, duplicate, getLow32 } from './utils.ts';
+import { buildStructuredType, duplicate, getLow32, getHigh32 } from './utils.ts';
 
 export class ExpressionCompiler {
   public readonly expression = new wasm.WasmExpression();
@@ -87,8 +87,15 @@ export class ExpressionCompiler {
     this.submit(exs[exs.length-1]);
   }
 
-  private paramGet(name: number) {
-    this.expression.pushRaw(0x20, name);
+  private get(name: number, kind: 'param' | 'local') {
+    this.expression.pushRaw(0x20, kind === 'param' ? name : this.locals.wrap(name));
+  }
+
+  private structAccess(struct: sapp.Expression, idx: number) {
+    this.expression.pushExpr(this.fastProcess(struct));
+    const structType = struct.type.base;
+    if (!Array.isArray(structType)) throw new Error('Trying to access non struct type as struct');
+    this.expression.pushExpr(this.memory.access(structType.map(convertToWasmType), idx));
   }
 
   private allocateString(value: string) {
@@ -133,6 +140,10 @@ export class ExpressionCompiler {
     this.expression.pushRaw(...buildStructuredType(tableIdx))
   }
 
+  private objectDataAddress(expr: sapp.Expression) {
+    this.expression.pushExpr(this.fastProcess(expr)).pushRaw(...getHigh32());
+  }
+
   submit(ex: sapp.Expression) {
     switch (ex.id) {
       case 'call': 
@@ -151,7 +162,13 @@ export class ExpressionCompiler {
         this.processStack(ex.exprs);
         break;
       case 'param_get':
-        this.paramGet(ex.name);
+        this.get(ex.name, 'param');
+        break;
+      case 'local_get':
+        this.get(ex.name, 'local');
+        break;
+      case 'struct_access':
+        this.structAccess(ex.struct, ex.idx);
         break;
       case 'list_literal':
         this.allocateList(ex.exprs);
@@ -161,6 +178,9 @@ export class ExpressionCompiler {
         break;
       case 'build':
         this.build(ex.args, ex.structIdx);
+        break;
+      case 'object_data':
+        this.objectDataAddress(ex.obj);
         break;
       case 'none':
         break;
