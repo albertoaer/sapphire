@@ -4,6 +4,7 @@ import {
 import { ExpressionGenerator } from './expression.ts';
 import { ParserError } from '../errors.ts';
 import { InstancedDefInspector } from './inspector.ts';
+import { Expression } from '../sapp.ts';
 
 export class Parameters {
   constructor(private readonly params: [string | null, sapp.Type][]) { }
@@ -110,7 +111,7 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
     readonly definition: DefinitionEnv,
     public readonly isPrivate: boolean,
     output?: sapp.Type,
-    struct?: sapp.Type[]
+    private readonly struct?: sapp.Type[]
   ) {
     if (!func.source) throw new ParserError(func.meta.line, 'Expecting function body');
     const args = func.inputs.map(x => [x.name, definition.module.resolveType(x.type)] as [string | null, sapp.Type]);
@@ -139,6 +140,11 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
     }
   }
 
+  instanceStruct(instance: Expression): sapp.Expression {
+    if (!this.struct) throw new Error('There is no instance struct');
+    return { id: 'object_data', obj: instance, type: new sapp.Type(this.struct) };
+  }
+
   private tryGet(name: string): sapp.Expression | undefined {
     const local = this._lcls.get(name);
     if (local) return { id: 'local_get', name: local[0], type: local[1] };
@@ -147,7 +153,7 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
     const instance = this.instance();
     if (instance) {
       const instp = this._inst!.get(name);
-      if (instp) return { id: 'struct_access', struct: instance, idx: instp[0], type: instp[1] };
+      if (instp) return { id: 'struct_access', struct: this.instanceStruct(instance), idx: instp[0], type: instp[1] };
     }
   }
 

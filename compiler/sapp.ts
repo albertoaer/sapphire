@@ -57,6 +57,9 @@ export type Expression = ({
   readonly structIdx: number,
   readonly args: Expression[]
 } | {
+  readonly id: 'object_data',
+  readonly obj: Expression
+} | {
   readonly id: 'none'
 }) & {
   readonly type: Type;
