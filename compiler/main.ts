@@ -14,7 +14,7 @@ const compiler: Compiler = new WasmCompiler(fsp);
 const code = compiler.compile(flags.file);
 
 if (flags.print) {
-  console.log(code);
+  console.log(...code);
 }
 
 if (flags.output) {
