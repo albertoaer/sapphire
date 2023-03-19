@@ -64,6 +64,11 @@ export abstract class ModuleEnv implements FuncFetcher, DefFetcher {
       if (array) throw tp.meta.error('Any cannot be an array');
       return sapp.Any;
     }
+    if (root === 'ref') {
+      unexpectChild(root, tp.base.route);
+      if (array) throw tp.meta.error('Ref cannot be an array');
+      return sapp.ExternRef;
+    }
   
     return new sapp.Type(this.fetchDef(new NameRoute(tp.base)), array);
   }

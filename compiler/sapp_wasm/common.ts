@@ -14,6 +14,7 @@ export function convertToWasmType(orig: sapp.Type): wasm.WasmType {
     case 'i64': return wasm.WasmType.I64;
     case 'f32': return wasm.WasmType.F32;
     case 'f64': return wasm.WasmType.F64;
+    case 'externref': return wasm.WasmType.Externref;
     case 'void': throw new CompilerError('Wasm', 'Trying to represent void');
   }
   if (typeof orig.base === 'object' && 'name' in orig.base)

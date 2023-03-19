@@ -68,7 +68,7 @@ export type Expression = ({
 export const ArraySizeAuto = 'auto'
 
 export class Type {
-  readonly base: Def | Type | Type[] | NativeType | 'void' | `literal:${string}` | 'any';
+  readonly base: Def | Type | Type[] | NativeType | 'void' | `literal:${string}` | 'any' | 'externref';
   readonly array?: number | typeof ArraySizeAuto;
 
   constructor(base: Type['base'], array?: Type['array']) {
@@ -111,6 +111,7 @@ export class Type {
 
 export const Void = new Type('void');
 export const Any = new Type('any');
+export const ExternRef = new Type('externref');
 export const String = new Type('string');
 export const Bool = new Type('bool');
 export const I32 = new Type('i32');
