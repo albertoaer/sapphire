@@ -1,5 +1,6 @@
 import { sapp } from '../common.ts';
 import { References } from './constants.ts';
+import { constants as vmc } from '../../wasm_vm/mod.ts';
 
 const route: sapp.Module['route'] = 'kernel:sapp_wasm';
 
@@ -236,6 +237,18 @@ const bool: sapp.Func[] = [
   }
 ]
 
+const alloc: sapp.Func = {
+  inputSignature: [sapp.I32],
+  outputSignature: sapp.I32,
+  source: [vmc.KernelImportName, vmc.AllocFnName]
+}
+
+const dealloc: sapp.Func = {
+  inputSignature: [sapp.I32],
+  outputSignature: sapp.Void,
+  source: [vmc.KernelImportName, vmc.DeallocFnName]
+}
+
 const pop: sapp.Func = { inputSignature: [sapp.Any], outputSignature: sapp.Void, source: References.drop };
 
 export const Kernel: sapp.Module = {
@@ -254,6 +267,8 @@ export const Kernel: sapp.Module = {
     funcToDef('bool', bool),
     funcToDef('!!', bool),
     funcToDef('pop', [pop]),
+    funcToDef('alloc', [alloc]),
+    funcToDef('dealloc', [dealloc])
   ]),
   exports: [] as sapp.Def[]
 } as const;

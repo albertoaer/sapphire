@@ -1,26 +1,15 @@
 import { CompilerError } from '../errors.ts';
-import { WasmModule, WasmType, WasmExpression, WasmTypeBytes, encodings } from '../wasm/mod.ts';
+import { WasmType, WasmExpression, WasmTypeBytes, encodings } from '../wasm/mod.ts';
 import { duplicate } from './utils.ts';
-import { ModName, MountedMemory, MemoryExportName, FnAllocateName } from './runtime_memory.ts';
 
 /**
  * Provide functions to compile memory features of the language
  */
 export class MemoryHelper {
-  private readonly alloc: number;
-
-  constructor(module: WasmModule, setMemory: boolean = true) {
-    if (setMemory)
-      module.configureMemory({
-        limits: { min: 1 },
-        import: { mod: ModName, name: MountedMemory },
-        exportAs: MemoryExportName
-      });
-    this.alloc = module.import(ModName, FnAllocateName, [WasmType.I32], [WasmType.I32]);
-  }
+  constructor(private readonly allocFn: number) { }
 
   allocate(tam: number): WasmExpression {
-    return new WasmExpression(0x41).pushNumber(tam, 'int', 32).pushRaw(0x10).pushNumber(this.alloc, 'uint', 32);
+    return new WasmExpression(0x41).pushNumber(tam, 'int', 32).pushRaw(0x10).pushNumber(this.allocFn, 'uint', 32);
   }
 
   /**

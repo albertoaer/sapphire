@@ -7,6 +7,7 @@ import { FunctionCollector } from './functions.ts';
 import { EnvironmentInjector } from './env/mod.ts';
 import { CompilerError } from '../errors.ts';
 import { MemoryHelper } from './memory.ts';
+import { constants as vmc } from '../wasm_vm/mod.ts';
 
 export class WasmCompiler implements Compiler {
   constructor(private readonly provider: ModuleProvider) { }
@@ -15,7 +16,13 @@ export class WasmCompiler implements Compiler {
     const generator = new Generator(this.provider, Kernel);
     const generated = generator.generateKnownModule([file]);
     const module = new wasm.WasmModule();
-    const memory = new MemoryHelper(module);
+    module.configureMemory({
+      limits: { min: 1 },
+      import: { mod: vmc.KernelImportName, name: vmc.MemoryName }
+    });
+    const memory = new MemoryHelper(
+      module.import(vmc.KernelImportName, vmc.AllocFnName, [wasm.WasmType.I32], [wasm.WasmType.I32])
+    );
     const injector = new EnvironmentInjector();
     const collector = new FunctionCollector(module, injector);
     for (const def of generated.exports.values())

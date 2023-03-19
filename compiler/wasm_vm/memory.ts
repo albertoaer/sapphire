@@ -1,9 +1,3 @@
-export const ModName = 'KernelMemory';
-export const MountedMemory = 'memory';
-export const FnAllocateName = 'alloc';
-export const FnDeallocateName = 'dealloc';
-export const MemoryExportName = `${ModName} ${MountedMemory}`;
-
 type Block = {
   size: number;
   used: boolean;
@@ -13,18 +7,8 @@ type Block = {
 export class MemoryManager {
   private blocks: Block[];
 
-  constructor(private readonly memory: WebAssembly.Memory) {
+  constructor(public readonly memory: WebAssembly.Memory) {
     this.blocks = [{ size: memory.buffer.byteLength, used: false, offset: 0 }];
-  }
-
-  static createAndPlace(imports: WebAssembly.Imports) {
-    const memory = new WebAssembly.Memory({ initial: 1 });
-    const mm = new MemoryManager(memory);
-    imports[ModName] = {
-      [MountedMemory]: memory,
-      [FnAllocateName]: mm.allocate,
-      [FnDeallocateName]: mm.deallocate,
-    }
   }
 
   allocate = (size: number): number => {
@@ -49,7 +33,6 @@ export class MemoryManager {
       this.blocks[block_index].size = size;
       this.blocks[block_index].used = true;
 
-      console.log(this.blocks[block_index].offset)
       this.blocks.push({ size: old_size - size, used: false, offset: this.blocks[block_index].offset + size });
 
       return this.blocks[block_index].offset;
