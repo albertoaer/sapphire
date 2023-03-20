@@ -7,7 +7,8 @@ const createKernel = (mm: MemoryManager): WebAssembly.ModuleImports => ({
   [constants.MemoryName]: mm.memory,
   [constants.DeallocFnName]: mm.deallocate,
   [constants.StrRefFnName]: funcs.makeStrRef(mm.memory),
-  [constants.LenFnName]: funcs.makeLen(mm.memory)
+  [constants.LenFnName]: funcs.makeLen(mm.memory),
+  [constants.EchoFnName]: console.log
 });
 
 const createImports = (mm: MemoryManager): WebAssembly.Imports => ({
