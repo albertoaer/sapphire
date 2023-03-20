@@ -270,6 +270,18 @@ const len: sapp.Func[] = [
   }
 ]
 
+const echo: sapp.Func[] = ((): sapp.Func[] => {
+  const echoes: sapp.Func[] = [];
+  for (const tp of [
+    sapp.ExternRef, sapp.String, sapp.String, sapp.Bool, sapp.I32, sapp.I64, sapp.F32, sapp.F64, sapp.ArrayAny
+  ]) echoes.push({
+    inputSignature: [tp],
+    outputSignature: sapp.Void,
+    source: [vmc.KernelImportName, vmc.EchoFnName]
+  })
+  return echoes;
+})();
+
 export const Kernel: sapp.Module = {
   route,
   defs: new Map([
@@ -290,6 +302,7 @@ export const Kernel: sapp.Module = {
     funcToDef('dealloc', [dealloc]),
     funcToDef('str_ref', [str_ref]),
     funcToDef('len', len),
+    funcToDef('echo', echo)
   ]),
   exports: [] as sapp.Def[]
 } as const;
