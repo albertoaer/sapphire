@@ -1,5 +1,5 @@
 import { CompilerError } from '../errors.ts';
-import { WasmType, WasmExpression, WasmTypeBytes, encodings } from '../wasm/mod.ts';
+import { WasmType, WasmExpression, WasmTypeBytes } from '../wasm/mod.ts';
 import { duplicate } from './utils.ts';
 
 /**
@@ -65,6 +65,9 @@ export class MemoryHelper {
     const final = new WasmExpression();
     const sz = WasmTypeBytes[tp];
     if (!sz) throw new CompilerError('Wasm', 'Cannot compute undefined size');
+    final.pushRaw(...duplicate(aux))
+      .pushExpr(this.writeItem(new WasmExpression(0x41).pushNumber(values.length, 'int', 32), WasmType.I32))
+      .pushRaw(0x41).pushNumber(sz, 'int', 32).pushRaw(0x6A);
     for (let i = 0; i < values.length; i++) {
       if (i < values.length - 1) final.pushRaw(...duplicate(aux));
       final.pushExpr(this.writeItem(values[i], tp));
@@ -89,11 +92,11 @@ export class MemoryHelper {
   /**
    * This method expects the base address to be already in the stack
    */
-  access(tp: WasmType | WasmType[], pos: number): WasmExpression {
+  accessConstant(tp: WasmType | WasmType[], pos: number): WasmExpression {
     if (!Array.isArray(tp)) {
       const sz = WasmTypeBytes[tp];
       if (!sz) throw new CompilerError('Wasm', 'Cannot compute undefined size');
-      return new WasmExpression(0x41, ...encodings.signedLEB128(pos * sz), 0x6A).pushExpr(this.readItem(tp));
+      return new WasmExpression(0x41).pushNumber(pos * sz, 'int', 32).pushRaw(0x6A).pushExpr(this.readItem(tp));
     }
     let compSz = 0;
     for (let i = 0; i < pos; i++) {
@@ -101,6 +104,20 @@ export class MemoryHelper {
       if (!sz) throw new CompilerError('Wasm', 'Cannot compute undefined size');
       compSz += sz;
     }
-    return new WasmExpression(0x41, ...encodings.signedLEB128(compSz), 0x6A).pushExpr(this.readItem(tp[pos]));
+    return new WasmExpression(0x41).pushNumber(compSz, 'int', 32)
+      .pushRaw(0x6A)
+      .pushExpr(this.readItem(tp[pos]));
+  }
+
+  /**
+   * This method expects the base address to be already in the stack
+   */
+  access(tp: WasmType, pos: WasmExpression): WasmExpression {
+    const sz = WasmTypeBytes[tp];
+    if (!sz) throw new CompilerError('Wasm', 'Cannot compute undefined size');
+    return new WasmExpression(0x41).pushNumber(sz, 'int', 32)
+      .pushExpr(pos).pushRaw(0x6C)
+      .pushRaw(0x6A)
+      .pushExpr(this.readItem(tp));
   }
 }

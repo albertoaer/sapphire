@@ -45,9 +45,9 @@ export type Expression = ({
   readonly id: 'local_get' | 'param_get',
   readonly name: number
 } | {
-  readonly id: 'struct_access',
-  readonly struct: Expression,
-  readonly idx: number
+  readonly id: 'access_index',
+  readonly structure: Expression,
+  readonly idx: number | Expression
 } | {
   readonly id: 'local_set',
   readonly name: number,

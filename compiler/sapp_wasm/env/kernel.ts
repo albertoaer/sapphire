@@ -262,6 +262,11 @@ const len: sapp.Func[] = [
     inputSignature: [sapp.String],
     outputSignature: sapp.I32,
     source: [vmc.KernelImportName, vmc.LenFnName]
+  },
+  {
+    inputSignature: [sapp.ArrayAny],
+    outputSignature: sapp.I32,
+    source: [vmc.KernelImportName, vmc.LenFnName]
   }
 ]
 

@@ -153,7 +153,9 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
     const instance = this.instance();
     if (instance) {
       const instp = this._inst!.get(name);
-      if (instp) return { id: 'struct_access', struct: this.instanceStruct(instance), idx: instp[0], type: instp[1] };
+      if (instp) return {
+        id: 'access_index', structure: this.instanceStruct(instance), idx: instp[0], type: instp[1]
+      };
     }
   }
 

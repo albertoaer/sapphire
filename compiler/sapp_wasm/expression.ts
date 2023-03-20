@@ -91,11 +91,20 @@ export class ExpressionCompiler {
     this.expression.pushRaw(0x20, kind === 'param' ? name : this.locals.wrap(name));
   }
 
-  private structAccess(struct: sapp.Expression, idx: number) {
-    this.expression.pushExpr(this.fastProcess(struct));
-    const structType = struct.type.base;
-    if (!Array.isArray(structType)) throw new Error('Trying to access non struct type as struct');
-    this.expression.pushExpr(this.memory.access(structType.map(convertToWasmType), idx));
+  private accessIndex(structure: sapp.Expression, idx: number | sapp.Expression) {
+    this.expression.pushExpr(this.fastProcess(structure));
+    if (structure.type.array)
+      this.expression.pushExpr(
+        typeof idx === 'number'
+        ? this.memory.accessConstant(convertToWasmType(structure.type), idx)
+        : this.memory.access(convertToWasmType(structure.type), this.fastProcess(idx))
+      );
+    else {
+      const type = structure.type.base;
+      if (!Array.isArray(type)) throw new Error('Trying to access non indexable type');
+      if (typeof idx !== 'number') throw new Error('Struct access must be constant');
+      this.memory.accessConstant(type.map(convertToWasmType), idx);
+    }
   }
 
   private allocateString(value: string) {
@@ -167,8 +176,8 @@ export class ExpressionCompiler {
       case 'local_get':
         this.get(ex.name, 'local');
         break;
-      case 'struct_access':
-        this.structAccess(ex.struct, ex.idx);
+      case 'access_index':
+        this.accessIndex(ex.structure, ex.idx);
         break;
       case 'list_literal':
         this.allocateList(ex.exprs);
