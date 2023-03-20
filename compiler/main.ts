@@ -26,5 +26,8 @@ if (flags.call) {
   const vm = await WasmVM.create(code);
   const fn = vm.exports[flags.call] as CallableFunction | undefined;
   if (!fn) console.log('Targeted function does not exists');
-  else console.log(fn(...flags.args));
+  else {
+    const ret = fn(...flags.args);
+    if (ret !== undefined) console.log(ret);
+  }
 }
