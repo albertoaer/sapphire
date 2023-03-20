@@ -237,6 +237,8 @@ const bool: sapp.Func[] = [
   }
 ]
 
+const pop: sapp.Func = { inputSignature: [sapp.Any], outputSignature: sapp.Void, source: References.drop };
+
 const alloc: sapp.Func = {
   inputSignature: [sapp.I32],
   outputSignature: sapp.I32,
@@ -249,7 +251,19 @@ const dealloc: sapp.Func = {
   source: [vmc.KernelImportName, vmc.DeallocFnName]
 }
 
-const pop: sapp.Func = { inputSignature: [sapp.Any], outputSignature: sapp.Void, source: References.drop };
+const str_ref: sapp.Func = {
+  inputSignature: [sapp.String],
+  outputSignature: sapp.ExternRef,
+  source: [vmc.KernelImportName, vmc.StrRefFnName]
+}
+
+const len: sapp.Func[] = [
+  {
+    inputSignature: [sapp.String],
+    outputSignature: sapp.I32,
+    source: [vmc.KernelImportName, vmc.LenFnName]
+  }
+]
 
 export const Kernel: sapp.Module = {
   route,
@@ -268,7 +282,9 @@ export const Kernel: sapp.Module = {
     funcToDef('!!', bool),
     funcToDef('pop', [pop]),
     funcToDef('alloc', [alloc]),
-    funcToDef('dealloc', [dealloc])
+    funcToDef('dealloc', [dealloc]),
+    funcToDef('str_ref', [str_ref]),
+    funcToDef('len', len),
   ]),
   exports: [] as sapp.Def[]
 } as const;

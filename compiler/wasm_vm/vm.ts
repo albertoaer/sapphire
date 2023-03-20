@@ -1,10 +1,13 @@
 import * as constants from './constants.ts';
 import { MemoryManager } from './memory.ts';
+import * as funcs from "./funcs.ts";
 
 const createKernel = (mm: MemoryManager): WebAssembly.ModuleImports => ({
   [constants.AllocFnName]: mm.allocate,
   [constants.MemoryName]: mm.memory,
-  [constants.DeallocFnName]: mm.deallocate
+  [constants.DeallocFnName]: mm.deallocate,
+  [constants.StrRefFnName]: funcs.makeStrRef(mm.memory),
+  [constants.LenFnName]: funcs.makeLen(mm.memory)
 });
 
 const createImports = (mm: MemoryManager): WebAssembly.Imports => ({
