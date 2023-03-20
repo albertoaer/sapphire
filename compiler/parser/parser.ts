@@ -106,12 +106,12 @@ export class Parser {
 
   parseListOrTuple(): Expression | undefined {
     const tuple = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
-    if (tuple !== undefined) return { id: 'tuple_literal', exprs: tuple, meta: this.tokens.createMeta() };
+    if (tuple !== undefined)
+      return { id: 'tuple_literal', exprs: tuple, meta: this.tokens.createMeta() };
 
     const list = this.tryParseExpressionGroup({ value: '{' }, { value: '}' });
-    if (list !== undefined) {
+    if (list !== undefined)
       return { id: 'list_literal', exprs: list, meta: this.tokens.createMeta() };
-    }
   }
 
   parseExpressionTerm(): Expression {
@@ -291,7 +291,11 @@ export class Parser {
     const functions: Func[] = [];
     const structs: Struct[] = [];
     const extensions: ParserRoute[] = [];
-    while (!this.tokens.nextIs({ value: 'end' })) {
+
+    if (this.tokens.nextIs({ value: 'as' })) {
+      this.tokens.expectNext({ value: '(' });
+      functions.push(this.parseFunc('', new Set()));
+    } else while (!this.tokens.nextIs({ value: 'end' })) {
       while (this.tokens.nextIs({ value: ';' }));
       if (this.tokens.nextIs({ value: 'struct' })) structs.push(this.parseStruct());
       else if (this.tokens.nextIs({ value: 'extends' })) extensions.push(this.parseExtend());
