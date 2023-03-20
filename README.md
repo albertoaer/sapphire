@@ -6,15 +6,15 @@ Sapphire parser is fully independent of the WASM compiler, allowing new compilat
 
 ## Hello World
 
-Currently there is no support for native JS strings, so here is a small exported sum function that logs the result in the output
+Sapphire strings are encoded into the WebAssembly Memory meanwhile Js console.log expects a Js string. In order to print "Hello World!", Sapphire must convert it string into a reference.
 
 ```
 ensured def console
-  log(i32 value): void;
+  log(ref): void;
 end
 
-export def sum(i32 a, i32 b)
-  console.log(a + b)
+export def main()
+  console.log("Hello World!":str_ref)
 end
 ```
 
