@@ -118,6 +118,7 @@ export const I32 = new Type('i32');
 export const I64 = new Type('i64');
 export const F32 = new Type('f32');
 export const F64 = new Type('f64');
+export const ArrayAny = new Type(Any, 'auto');
 
 export const typeArrayEquals = (a: Type[], b: Type[]): boolean =>
   a.length === b.length && a.every((t, i) => t.isEquals(b[i]));
