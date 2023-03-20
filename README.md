@@ -18,6 +18,14 @@ export def main()
 end
 ```
 
+Instead of loading the `console.log` function, a newer introduction is the `kernel.echo` function
+
+```
+export def main()
+  "Hello World!":str_ref:echo
+end
+```
+
 ## Documentation
 
 The [Language Documentation](docs/lang.md) with syntaxis, features and technical description
