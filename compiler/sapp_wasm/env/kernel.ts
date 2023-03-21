@@ -142,6 +142,14 @@ const rem: sapp.Func[] = [
   }
 ]
 
+const not: sapp.Func[] = [
+  {
+    inputSignature: [sapp.Bool],
+    outputSignature: sapp.Bool,
+    source: References.not
+  }
+]
+
 const i32: sapp.Func[] = [
   {
     inputSignature: [sapp.Bool],
@@ -290,6 +298,9 @@ export const Kernel: sapp.Module = {
     funcToDef('*', mul),
     funcToDef('/', div),
     funcToDef('%', rem),
+
+    funcToDef('not', not),
+    funcToDef('!', not),
 
     funcToDef('i32', i32),
     funcToDef('i64', i64),

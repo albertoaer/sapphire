@@ -27,6 +27,8 @@ export const RawInstructions: { [id: number]: number[] | [number[], number[]] } 
   [References.i32_rem]: [0x6F],
   [References.i64_rem]: [0x81],
 
+  [References.not]: [0x41, 0, 0x46],
+
   [References.i32_to_i64]: [0xAC],
   [References.i32_to_f32]: [0xB2],
   [References.i32_to_f64]: [0xB7],

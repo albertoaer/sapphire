@@ -25,6 +25,8 @@ export enum References {
   i32_rem,
   i64_rem,
 
+  not,
+
   i32_to_i64,
   i32_to_f32,
   i32_to_f64,
