@@ -45,7 +45,7 @@ export class DefaultLocals implements Locals {
     for (let i = 0; i < this.aux.length; i++) {
       if (this.aux[i][0] == tp && !this.aux[i][1]) {
         this.aux[i][1] = true;
-        return i + this.locals.length;
+        return i + this.localsBaseSize;
       }
     }
     this.aux.push([tp, true]);
