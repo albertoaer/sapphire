@@ -94,8 +94,9 @@ export class Parser {
     const cond = this.parseExpression();
     this.tokens.expectNext({ value: 'then' });
     const then = this.parseExpression();
-    this.tokens.expectNext({ value: 'else' });
-    const branch = this.tokens.nextIs({ value: 'if' }) ? this.parseIf(true) : this.parseExpression();
+    const branch = this.tokens.nextIs({ value: 'else' })
+      ? this.tokens.nextIs({ value: 'if' }) ? this.parseIf(true) : this.parseExpression()
+      : undefined;
     if (!notEnd) this.tokens.expectNext({ value: 'end' });
     return { id: 'if', cond, then, else: branch, meta: this.tokens.createMeta() };
   }

@@ -51,7 +51,7 @@ export class ExpressionCompiler {
       this.fastProcess(ex.cond),
       ex.then.type.isVoid ? null : convertToWasmType(ex.then.type),
       this.fastProcess(ex.then),
-      this.fastProcess(ex.else)
+      ex.else ? this.fastProcess(ex.else) : undefined
     );
   }
 

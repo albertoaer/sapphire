@@ -70,12 +70,19 @@ export class ExpressionGenerator {
   }
 
   private processIf(ex: parser.Expression & { id: 'if' }): sapp.Expression {
-    const cond_ = this.processEx(ex.cond);
-    if (cond_.type.base !== 'bool') throw new MatchTypeError(ex.meta.line, cond_.type, new sapp.Type('bool'));
-    const then_ = this.processEx(ex.then);
-    const else_ = this.processEx(ex.else);
-    if (!else_.type.isEquals(then_.type)) throw new MatchTypeError(ex.meta.line, else_.type, then_.type);
-    return { id: 'if', cond: cond_, else: else_, then: then_, type: then_.type };
+    const branches = {
+      cond: this.processEx(ex.cond),
+      then: this.processEx(ex.then),
+      else: ex.else ? this.processEx(ex.else) : undefined
+    };
+    if (!branches.cond.type.isEquals(sapp.Bool))
+      throw new MatchTypeError(ex.meta.line, branches.cond.type, sapp.Bool);
+    if (branches.else) {
+      if (!branches.then.type.isEquals(branches.else.type))
+        throw new MatchTypeError(ex.meta.line, branches.then.type, branches.else.type);
+    } else if (!branches.then.type.isEquals(sapp.Void))
+      throw new MatchTypeError(ex.meta.line, branches.then.type, sapp.Void);
+    return { id: 'if', ...branches, type: branches.then.type };
   }
 
   private processTuple({ exprs, meta }: parser.Expression & { id: 'tuple_literal' }): sapp.Expression {

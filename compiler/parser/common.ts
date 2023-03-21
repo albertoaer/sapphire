@@ -57,7 +57,7 @@ export type Expression = ({
   readonly id: 'if',
   readonly cond: Expression,
   readonly then: Expression,
-  readonly else: Expression
+  readonly else?: Expression
 } | {
   readonly id: 'call',
   readonly name?: ParserRoute,
