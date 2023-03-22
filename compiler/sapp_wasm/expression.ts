@@ -91,56 +91,48 @@ export class ExpressionCompiler {
     this.expression.pushRaw(0x20, kind === 'param' ? name : this.locals.wrap(name));
   }
 
+  private set(name: number, value: sapp.Expression) {
+    this.expression.pushExpr(this.fastProcess(value)).pushRaw(0x21, this.locals.wrap(name));
+  }
+
   private accessIndex(structure: sapp.Expression, idx: number | sapp.Expression) {
     this.expression.pushExpr(this.fastProcess(structure));
-    if (structure.type.array)
-      this.expression.pushExpr(
-        typeof idx === 'number'
-        ? this.memory.accessConstant(convertToWasmType(structure.type), idx)
-        : this.memory.access(convertToWasmType(structure.type), this.fastProcess(idx))
-      );
-    else {
+    if (structure.type.array) {
+      if (typeof idx === 'number')
+        this.expression.pushExpr(this.memory.accessConstant(convertToWasmType(structure.type), idx, true));
+      else {
+        if (!idx.type.isEquals(sapp.I32)) throw new CompilerError('Wasm', 'Expecting I32 kind index');
+        this.expression.pushExpr(this.memory.access(convertToWasmType(structure.type), this.fastProcess(idx), true));
+      }
+    } else {
       const type = structure.type.base;
-      if (!Array.isArray(type)) throw new Error('Trying to access non indexable type');
-      if (typeof idx !== 'number') throw new Error('Struct access must be constant');
-      this.memory.accessConstant(type.map(convertToWasmType), idx);
+      if (!Array.isArray(type)) throw new CompilerError('Wasm', 'Trying to access non indexable type');
+      if (typeof idx !== 'number') throw new CompilerError('Wasm', 'Struct access must be constant');
+      this.expression.pushExpr(this.memory.accessConstant(type.map(convertToWasmType), idx, false));
     }
   }
 
   private allocateString(value: string) {
-    const encoded = wasm.encodings.encodeString(value);
-    const getAddress = this.memory.allocate(encoded.length);
     const aux = this.locals.requireAux(wasm.WasmType.I32);
-    this.expression.pushExpr(getAddress).pushRaw(...duplicate(this.locals.wrap(aux)));
+    const encoded = wasm.encodings.encodeString(value);
     this.expression.pushExpr(this.memory.copyBuffer(encoded, this.locals.wrap(aux)));
     this.locals.freeAux(aux);
   }
 
   private allocateList(exprs: sapp.Expression[]) {
-    const tp = convertToWasmType(exprs[0].type);
-    const sz = wasm.WasmTypeBytes[tp];
-    if (sz === undefined) throw new CompilerError('Wasm', 'Cannot compute undefined size');
-    const getAddress = this.memory.allocate(sz * exprs.length);
     const aux = this.locals.requireAux(wasm.WasmType.I32);
-    this.expression.pushExpr(getAddress).pushRaw(...duplicate(this.locals.wrap(aux)));
-    this.expression.pushExpr(this.memory.copySame(exprs.map(x => this.fastProcess(x)), tp, this.locals.wrap(aux)));
+    const tp = convertToWasmType(exprs[0].type);
+    this.expression.pushExpr(
+      this.memory.copyArray(exprs.map(x => this.fastProcess(x)), tp, this.locals.wrap(aux))
+    );
     this.locals.freeAux(aux);
   }
-
+  
   private allocateTuple(exprs: sapp.Expression[]) {
-    let sz = 0;
-    const mapped: [wasm.WasmExpression, wasm.WasmType][] = [];
-    for (const expr of exprs) {
-      const tp = convertToWasmType(expr.type);
-      mapped.push([this.fastProcess(expr), tp]);
-      const tempsz = wasm.WasmTypeBytes[tp];
-      if (tempsz === undefined) throw new CompilerError('Wasm', 'Cannot compute undefined size');
-      sz += tempsz;
-    }
-    const getAddress = this.memory.allocate(sz);
     const aux = this.locals.requireAux(wasm.WasmType.I32);
-    this.expression.pushExpr(getAddress).pushRaw(...duplicate(this.locals.wrap(aux)));
-    this.expression.pushExpr(this.memory.copy(mapped, this.locals.wrap(aux)));
+    this.expression.pushExpr(
+      this.memory.copyTuple(exprs.map(x => [this.fastProcess(x), convertToWasmType(x.type)]), this.locals.wrap(aux))
+    );
     this.locals.freeAux(aux);
   }
 
@@ -175,6 +167,9 @@ export class ExpressionCompiler {
         break;
       case 'local_get':
         this.get(ex.name, 'local');
+        break;
+      case 'local_set':
+        this.set(ex.name, ex.value);
         break;
       case 'access_index':
         this.accessIndex(ex.structure, ex.idx);

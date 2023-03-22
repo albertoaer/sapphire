@@ -22,6 +22,12 @@ export function convertToWasmType(orig: sapp.Type): wasm.WasmType {
   throw new CompilerError('Wasm', `Type not handled: ${orig.toString()}`)
 }
 
+export function getWasmSize(tp: wasm.WasmType): number {
+  const sz = wasm.WasmTypeBytes[tp];
+  if (sz === undefined) throw new CompilerError('Wasm', 'Cannot compute undefined');
+  return sz;
+}
+
 export type RawCodeSpec = {
   reverseStack?: boolean,
   postCode?: Uint8Array,
