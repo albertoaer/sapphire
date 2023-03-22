@@ -69,6 +69,19 @@ export class ExpressionGenerator {
     return { id: 'group', exprs: group.map(x => x), type: group.at(-1)?.type! };
   }
 
+  private processAccessIndex(ex: parser.Expression & { id: 'access_index' }): sapp.Expression {
+    const structure = this.processEx(ex.structure);
+    const idx = typeof ex.idx === 'number' ? ex.idx : this.processEx(ex.idx);
+    let tp: sapp.Type;
+    if (structure.type.array !== undefined) tp = new sapp.Type(structure.type.base);
+    else if (Array.isArray(structure.type.base)) {
+      if (typeof ex.idx !== 'number') throw ex.meta.error(`Expecting constant index for struct access`);
+      if (ex.idx < 0 || ex.idx >= structure.type.base.length) throw ex.meta.error(`Index out of bounds`);
+      tp = structure.type.base[ex.idx];
+    } else throw ex.meta.error(`Type cannot be indexed: ${structure.type}`);
+    return { id: 'access_index', structure, idx, type: tp };
+  }
+
   private processIf(ex: parser.Expression & { id: 'if' }): sapp.Expression {
     const branches = {
       cond: this.processEx(ex.cond),
@@ -124,6 +137,7 @@ export class ExpressionGenerator {
       case 'assign': return this.processAssign(ex);
       case 'call': return this.processCall(ex);
       case 'group': return this.processGroup(ex);
+      case 'access_index': return this.processAccessIndex(ex);
       case 'if': return this.processIf(ex);
       case 'tuple_literal': return this.processTuple(ex);
       case 'list_literal': return this.processList(ex);

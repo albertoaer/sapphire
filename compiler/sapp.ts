@@ -38,10 +38,6 @@ export type Expression = ({
   readonly id: 'group' | 'tuple_literal' | 'list_literal',
   readonly exprs: Expression[]
 } | {
-  readonly id: 'index',
-  readonly origin: Expression,
-  readonly args: Expression[]
-} | {
   readonly id: 'local_get' | 'param_get',
   readonly name: number
 } | {

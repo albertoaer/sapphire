@@ -146,27 +146,29 @@ export class Parser {
   }
 
   tryParseExpressionRecursiveOp(expr: Expression): Expression | undefined {
+    const meta = this.tokens.createMeta();
     const callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
     if (callArgs !== undefined)
-      return { id: 'call', instance: expr, args: callArgs, meta: this.tokens.createMeta() };
+      return { id: 'call', instance: expr, args: callArgs, meta };
     const indexArgs = this.tryParseExpressionGroup({ value: '[' }, { value: ']' });
     if (indexArgs !== undefined) {
-      const meta = this.tokens.createMeta();
-      return { id: 'call', name: { route: ['get'], meta }, args: [expr, ...indexArgs], meta };
+      if (indexArgs.length !== 1) throw meta.error('Expecting 1 argument for indexation');
+      return { id: 'access_index', idx: indexArgs[0], meta, structure: expr };
     }
     if (this.tokens.nextIs({ value: '.' })) {
       const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
-      const meta = this.tokens.createMeta();
       const callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
       const base = { instance: expr, name: { route, meta }, meta };
       if (callArgs !== undefined) return { id: 'call', args: callArgs, ...base }
       else return { id: 'value', ...base };
     }
     if (this.tokens.nextIs({ value: ':' })) {
+      const constIndex = this.tokens.nextIs({ type: 'int' });
+      if (constIndex)
+        return { id: 'access_index', idx: Number(constIndex.value), meta, structure: expr };
       const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
-      const meta = this.tokens.createMeta();
       const callArgs = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
-      return { id: 'call', name: { route, meta }, meta: expr.meta, args: [expr, ...(callArgs ?? [])] };
+      return { id: 'call', name: { route, meta }, meta, args: [expr, ...(callArgs ?? [])] };
     }
   }
 

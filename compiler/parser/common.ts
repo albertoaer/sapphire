@@ -74,6 +74,10 @@ export type Expression = ({
   readonly id: 'group',
   readonly exprs: Expression[]
 } | {
+  readonly id: 'access_index',
+  readonly structure: Expression,
+  readonly idx: number | Expression
+} | {
   readonly id: 'tuple_literal',
   readonly exprs: Expression[]
 } | {
