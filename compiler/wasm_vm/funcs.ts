@@ -7,7 +7,7 @@ export function makeStrRef(memory: WebAssembly.Memory): (address: number) => str
     let start = address;
     let byte;
     do byte = buffer.at(++start)!; while (byte >> 7 !== 0);
-    const tam = Leb128.unsigned.readBn(new MockStream(Buffer.from(buffer))).toNumber();
+    const tam = Leb128.unsigned.readBn(new MockStream(Buffer.from(buffer.slice(address, start)))).toNumber();
     return new TextDecoder().decode(buffer.slice(start, start + tam))
   }
 }
@@ -18,6 +18,6 @@ export function makeLen(memory: WebAssembly.Memory): (address: number) => number
     let start = address;
     let byte;
     do byte = buffer.at(++start)!; while (byte >> 7 !== 0);
-    return Leb128.unsigned.readBn(new MockStream(Buffer.from(buffer))).toNumber();
+    return Leb128.unsigned.readBn(new MockStream(Buffer.from(buffer.slice(address, start)))).toNumber();
   }
 }
