@@ -1,1 +1,4 @@
 .vscode
+
+# ignore compiled tools
+bin

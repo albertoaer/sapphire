@@ -1,0 +1,5 @@
+{
+  "tasks": {
+    "build": "deno compile --allow-all --output bin/sapp.exe tools/sapp.ts"
+  }
+}
