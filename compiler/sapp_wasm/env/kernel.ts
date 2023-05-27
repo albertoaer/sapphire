@@ -265,6 +265,12 @@ const str_ref: sapp.Func = {
   source: [vmc.KernelImportName, vmc.StrRefFnName]
 }
 
+const arr_ref_get: sapp.Func = {
+  inputSignature: [sapp.ExternRef, sapp.I32],
+  outputSignature: sapp.ExternRef,
+  source: [vmc.KernelImportName, vmc.ArrRefGetFnName]
+}
+
 const len: sapp.Func[] = [
   {
     inputSignature: [sapp.String],
@@ -312,6 +318,7 @@ export const Kernel: sapp.Module = {
     funcToDef('alloc', [alloc]),
     funcToDef('dealloc', [dealloc]),
     funcToDef('str_ref', [str_ref]),
+    funcToDef('arr_ref_get', [arr_ref_get]),
     funcToDef('len', len),
     funcToDef('echo', echo)
   ]),

@@ -12,6 +12,11 @@ export function makeStrRef(memory: WebAssembly.Memory): (address: number) => str
   }
 }
 
+// deno-lint-ignore no-explicit-any
+export function indexRefArray(arr: any[], index: number): any {
+  return arr[index];
+}
+
 export function makeLen(memory: WebAssembly.Memory): (address: number) => number {
   return (address: number): number => {
     const buffer = new Uint8Array(memory.buffer);
