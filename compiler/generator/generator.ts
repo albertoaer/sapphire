@@ -7,8 +7,8 @@ import { ModuleInspector, DefInspector } from './inspector.ts';
 import { DefaultDefFactory } from './factory.ts';
 
 export interface ModuleProvider {
-  getRoute(descriptor: sapp.ModuleDescriptor): sapp.ModuleRoute;
-  getModule(descriptor: sapp.ModuleDescriptor, generator: Generator): sapp.Module;
+  getRoute(requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor): sapp.ModuleRoute;
+  getModule(requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor, generator: Generator): sapp.Module;
 }
 
 export class Generator {
@@ -21,14 +21,14 @@ export class Generator {
     this.kernel = kernel ?? undefined;
   }
 
-  private makeGlobals(dependencies: parser.Import[]): Map<string, Global> {
+  private makeGlobals(requester: sapp.ModuleRoute, dependencies: parser.Import[]): Map<string, Global> {
     const globals: Map<string, Global> = new Map();
     if (this.kernel) {
       this.kernel.defs.forEach((v,k) => globals.set(k, new DefInspector(v)));
       globals.set('kernel', new ModuleInspector(this.kernel));
     }
     for (const imp of dependencies) {
-      const module = this.generateKnownModule(imp.route);
+      const module = this.generateKnownModule(requester, imp.route);
       if (imp.mode !== 'into') globals.set(imp.name, new ModuleInspector(module));
       else for (const [name, def] of module.defs)
         globals.set(name, new DefInspector(def));
@@ -36,13 +36,18 @@ export class Generator {
     return globals;
   }
 
-  generateKnownModule(descriptor: sapp.ModuleDescriptor): sapp.Module {
-    if (this.provider === undefined) throw new DependencyError('Importing is not allowed');
-    const route = this.provider.getRoute(descriptor);
-    if (this.inProgressModules.has(route)) throw new DependencyError(`Circular dependency trying to import ${route}`);
+  generateKnownModule(requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor): sapp.Module {
+    if (this.provider === undefined)
+      throw new DependencyError('Importing is not allowed');
+
+    const route = this.provider.getRoute(requester, descriptor);
+
+    if (this.inProgressModules.has(route))
+      throw new DependencyError(`Circular dependency trying to import ${route}`);
+      
     if (!this.storedModules.has(route)) {
       this.inProgressModules.add(route);
-      const module = this.provider.getModule(descriptor, this);
+      const module = this.provider.getModule(requester, descriptor, this);
       this.storedModules.set(route, module);
       this.inProgressModules.delete(route);
     }
@@ -52,7 +57,7 @@ export class Generator {
   generateModule(route: sapp.ModuleRoute, source: TokenList | string): sapp.Module {
     const parser = new Parser(typeof source === 'string' ? { source } : { tokens: source });
     parser.parse();
-    const generator = new ModuleGenerator(this.makeGlobals(parser.dependencies));
+    const generator = new ModuleGenerator(this.makeGlobals(route, parser.dependencies));
     const builderFactory = new DefaultDefFactory(generator, route);
     for (const def of parser.definitions)
       generator.set(def.name, builderFactory.create(def), { exported: def.exported });

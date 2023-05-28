@@ -1,3 +1,4 @@
+import * as path from 'https://deno.land/std@0.177.0/path/mod.ts';
 import { wasm } from './common.ts';
 import { Generator, ModuleProvider } from '../generator/generator.ts';
 import { Kernel } from './env/kernel.ts';
@@ -14,7 +15,10 @@ export class WasmCompiler implements Compiler {
 
   compile(file: string): Uint8Array {
     const generator = new Generator(this.provider, Kernel);
-    const generated = generator.generateKnownModule([file]);
+    // The first module route must be correctly generated
+    const modroute: `file:${string}` = `file:${path.isAbsolute(file) ? file : path.join(Deno.cwd(), file)}`;
+    const filename = path.basename(file);
+    const generated = generator.generateKnownModule(modroute, [filename]);
     const module = new wasm.WasmModule();
     module.configureMemory({
       limits: { min: 1 },
