@@ -283,7 +283,10 @@ export class Parser {
       );
     else if (this.tokens.nextIs({ value: 'into' }))
       this.dependencies.push({ route: route, meta, mode: 'into' });
-    else
+      else if (this.tokens.nextIs({ value: 'export' })) {
+        this.tokens.expectNext({ value: 'into' });
+        this.dependencies.push({ route: route, meta, mode: 'export_into' });
+      } else
       this.dependencies.push({ route: route, meta, mode: 'named', name: route.at(-1) as string });
   }
 

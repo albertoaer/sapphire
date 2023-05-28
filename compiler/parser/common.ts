@@ -103,6 +103,8 @@ export type Import = {
     name: string
   } | {
     mode: 'into'
+  } | {
+    mode: 'export_into'
   }
 )
 

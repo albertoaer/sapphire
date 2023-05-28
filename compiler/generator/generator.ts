@@ -11,6 +11,11 @@ export interface ModuleProvider {
   getModule(requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor, generator: Generator): sapp.Module;
 }
 
+interface GeneratedEnv {
+  globals: Map<string, Global>,
+  exported: Map<string, sapp.Def>
+}
+
 export class Generator {
   private readonly inProgressModules: Set<sapp.ModuleRoute> = new Set();
   private readonly storedModules: Map<sapp.ModuleRoute, sapp.Module> = new Map();
@@ -21,19 +26,27 @@ export class Generator {
     this.kernel = kernel ?? undefined;
   }
 
-  private makeGlobals(requester: sapp.ModuleRoute, dependencies: parser.Import[]): Map<string, Global> {
+  private generateEnv(requester: sapp.ModuleRoute, dependencies: parser.Import[]): GeneratedEnv {
     const globals: Map<string, Global> = new Map();
+    const exported: Map<string, sapp.Def> = new Map();
+
     if (this.kernel) {
       this.kernel.defs.forEach((v,k) => globals.set(k, new DefInspector(v)));
       globals.set('kernel', new ModuleInspector(this.kernel));
     }
     for (const imp of dependencies) {
       const module = this.generateKnownModule(requester, imp.route);
-      if (imp.mode !== 'into') globals.set(imp.name, new ModuleInspector(module));
-      else for (const [name, def] of module.defs)
-        globals.set(name, new DefInspector(def));
+      if (imp.mode === 'named') globals.set(imp.name, new ModuleInspector(module));
+      else {
+        for (const [name, def] of module.defs) {
+          globals.set(name, new DefInspector(def));
+        }
+        if (imp.mode === 'export_into') for (const [name, def] of module.defs) {
+          exported.set(name, def);
+        }
+      }
     }
-    return globals;
+    return { globals, exported };
   }
 
   generateKnownModule(requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor): sapp.Module {
@@ -57,10 +70,20 @@ export class Generator {
   generateModule(route: sapp.ModuleRoute, source: TokenList | string): sapp.Module {
     const parser = new Parser(typeof source === 'string' ? { source } : { tokens: source });
     parser.parse();
-    const generator = new ModuleGenerator(this.makeGlobals(route, parser.dependencies));
+    
+    const { globals, exported } = this.generateEnv(route, parser.dependencies);
+    
+    const generator = new ModuleGenerator(globals);
     const builderFactory = new DefaultDefFactory(generator, route);
+
     for (const def of parser.definitions)
       generator.set(def.name, builderFactory.create(def), { exported: def.exported });
-    return generator.build(route);
+      
+    const builded = generator.build(route);
+    for (const [name, value] of exported)
+      if (!builded.defs.has(name))
+        builded.defs.set(name, value);
+
+    return builded;
   }
 }
