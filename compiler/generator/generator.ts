@@ -1,10 +1,11 @@
-import { sapp, parser, Global } from './common.ts';
+import { sapp, parser, Global, DefinitionBuilder, ModuleEnv } from './common.ts';
 import { Parser } from '../parser/parser.ts';
 import { TokenList } from '../parser/tokenizer.ts';
 import { ModuleGenerator } from "./module.ts";
 import { DependencyError } from '../errors.ts';
 import { ModuleInspector, DefInspector } from './inspector.ts';
-import { DefaultDefFactory } from './factory.ts';
+import { EnsuredDefinitionGenerator } from './ensured_definition.ts';
+import { DefinitionGenerator } from "./definition.ts";
 
 export interface ModuleProvider {
   getRoute(requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor): sapp.ModuleRoute;
@@ -24,29 +25,6 @@ export class Generator {
 
   overwriteKernel(kernel: sapp.Module | null) {
     this.kernel = kernel ?? undefined;
-  }
-
-  private generateEnv(requester: sapp.ModuleRoute, dependencies: parser.Import[]): GeneratedEnv {
-    const globals: Map<string, Global> = new Map();
-    const exported: Map<string, sapp.Def> = new Map();
-
-    if (this.kernel) {
-      this.kernel.defs.forEach((v,k) => globals.set(k, new DefInspector(v)));
-      globals.set('kernel', new ModuleInspector(this.kernel));
-    }
-    for (const imp of dependencies) {
-      const module = this.generateKnownModule(requester, imp.route);
-      if (imp.mode === 'named') globals.set(imp.name, new ModuleInspector(module));
-      else {
-        for (const [name, def] of module.defs) {
-          globals.set(name, new DefInspector(def));
-        }
-        if (imp.mode === 'export_into') for (const [name, def] of module.defs) {
-          exported.set(name, def);
-        }
-      }
-    }
-    return { globals, exported };
   }
 
   generateKnownModule(requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor): sapp.Module {
@@ -74,10 +52,13 @@ export class Generator {
     const { globals, exported } = this.generateEnv(route, parser.dependencies);
     
     const generator = new ModuleGenerator(globals);
-    const builderFactory = new DefaultDefFactory(generator, route);
 
     for (const def of parser.definitions)
-      generator.set(def.name, builderFactory.create(def), { exported: def.exported });
+      generator.set(
+        def.name,
+        this.createDefinitionBuilder(def, generator, route),
+        { exported: def.exported }
+      );
       
     const builded = generator.build(route);
     for (const [name, value] of exported)
@@ -85,5 +66,33 @@ export class Generator {
         builded.defs.set(name, value);
 
     return builded;
+  }
+
+  private createDefinitionBuilder(parsed: parser.Def, env: ModuleEnv, route: sapp.ModuleRoute): DefinitionBuilder {
+    if (parsed.ensured) return new EnsuredDefinitionGenerator(route, env, parsed);
+    else return new DefinitionGenerator(route, env, parsed);
+  }
+
+  private generateEnv(requester: sapp.ModuleRoute, dependencies: parser.Import[]): GeneratedEnv {
+    const globals: Map<string, Global> = new Map();
+    const exported: Map<string, sapp.Def> = new Map();
+
+    if (this.kernel) {
+      this.kernel.defs.forEach((v,k) => globals.set(k, new DefInspector(v)));
+      globals.set('kernel', new ModuleInspector(this.kernel));
+    }
+    for (const imp of dependencies) {
+      const module = this.generateKnownModule(requester, imp.route);
+      if (imp.mode === 'named') globals.set(imp.name, new ModuleInspector(module));
+      else {
+        for (const [name, def] of module.defs) {
+          globals.set(name, new DefInspector(def));
+        }
+        if (imp.mode === 'export_into') for (const [name, def] of module.defs) {
+          exported.set(name, def);
+        }
+      }
+    }
+    return { globals, exported };
   }
 }
