@@ -10,7 +10,7 @@ export type Token = {
 export const Keywords = [
   'def', 'except', 'extends', 'open', 'use', 'new',
   'if','then', 'else', 'end', 'struct', 'priv', 'as',
-  'into', 'ensured', 'force', 'true', 'false', 'export',
+  'into', 'ensured', 'force', 'true', 'false', 'export', 'next',
   '(', ')', '[', ']', '{', '}', ';', ',', '.', ':', '_', '=', '^'
 ] as const
 

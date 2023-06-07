@@ -64,6 +64,9 @@ export type Expression = ({
   readonly instance?: Expression,
   readonly args: Expression[]
 } | {
+  readonly id: 'tail_call',
+  readonly args: Expression[]
+} | {
   readonly id: 'literal',
   readonly value: Literal
 } | {

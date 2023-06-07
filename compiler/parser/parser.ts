@@ -142,6 +142,12 @@ export class Parser {
       if (args !== undefined) return { id: 'call', name: { route, meta }, args: args, meta };
       return { id: 'value', name: { route, meta }, meta };
     }
+    if (this.tokens.nextIs({ value: 'next' })) {
+      const args = this.tryParseExpressionGroup({ value: '(' }, { value: ')' });
+      if (args === undefined) this.tokens.emitError('Expecting arguments');
+      const meta = this.tokens.createMeta();
+      return { id: 'tail_call', args: args, meta };
+    }
     this.tokens.emitError('Expecting expression');
   }
 

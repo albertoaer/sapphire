@@ -74,14 +74,15 @@ Deno.test('must parse', () => {
       else: { id: 'value', name: { route: ['e'], meta }, meta }
     }
   });
-  assertEquals(parserFor('a.c[b.c(),2,"hello"].x.y').parseExpression(), {
+  assertEquals(parserFor('a.c[2].x.y').parseExpression(), {
     id: 'value', name: { route: ['x', 'y'], meta }, meta, instance: {
-      id: 'call', meta, name: { route: ['get'], meta }, args: [
-        { id: 'value', meta, name: { route: ['a', 'c'], meta } },
-        { id: 'call', name: { route: ['b', 'c'], meta }, args: [], meta },
-        { id: 'literal', value: { value: '2', type: 'i32', meta }, meta },
-        { id: 'literal', value: { value: 'hello', type: 'string', meta }, meta }
-      ]
+      id: 'access_index', meta, idx: {
+        id: 'literal',
+        meta,
+        value: { type: 'i32', meta, value: '2' }
+      }, structure: {
+        id: 'value', meta, name: { route: ['a', 'c'], meta }
+      }
     }
   });
   assertEquals(parserFor('a = (4.4^ * b.c)').parseExpression(), {
@@ -95,11 +96,22 @@ Deno.test('must parse', () => {
       meta
     }, meta
   });
-  assertEquals(parserFor('new[2] + new[smt()]').parseExpression(), {
-    id: 'call', name: { meta, route: ['+'] },
+  assertEquals(parserFor('next(1,"hey") - (new[2] + new[smt()])').parseExpression(), {
+    id: 'call', name: { meta, route: ['-'] },
     meta, args: [
-      { id: 'build', args: [ { id: 'literal', meta, value: { meta, type: 'i32', value: '2' } } ], meta },
-      { id: 'build', args: [ { id: 'call', meta, name: { meta, route: ['smt'] }, args: [] } ], meta },
+      {
+        id: 'tail_call', meta, args: [
+          { id: 'literal', value: { type: 'i32', value: '1', meta }, meta },
+          { id: 'literal', value: { type: 'string', value: 'hey', meta }, meta }
+        ]
+      },
+      {
+        id: 'call', name: { meta, route: ['+'] },
+        meta, args: [
+          { id: 'build', args: [ { id: 'literal', meta, value: { meta, type: 'i32', value: '2' } } ], meta },
+          { id: 'build', args: [ { id: 'call', meta, name: { meta, route: ['smt'] }, args: [] } ], meta },
+        ]
+      }
     ]
   })
 });
@@ -108,4 +120,5 @@ Deno.test('must not parse', () => {
   assertThrows(() => parserFor('string{').parseType());
   assertThrows(() => parserFor('int a, float').parseHeuristicList({ value: ')' }));
   assertThrows(() => parserFor('int a, _)').parseArgList({ value: ')' }))
+  assertThrows(() => parserFor('next').parseExpressionTerm())
 });
