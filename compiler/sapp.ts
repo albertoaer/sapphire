@@ -146,8 +146,6 @@ export interface Def {
   readonly route: ModuleRoute;
   readonly name: string;
 
-  readonly instanceOverloads: number;
-
   readonly funcs: Map<string, Func[]>;
   readonly instanceFuncs: Map<string, Func[][]>;
 }

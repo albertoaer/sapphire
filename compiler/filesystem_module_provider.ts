@@ -1,5 +1,6 @@
 import * as path from "https://deno.land/std@0.177.0/path/mod.ts";
-import { ModuleProvider, Generator } from './generator/generator.ts';
+import { Generator } from './generator/generator.ts';
+import { ModuleProvider } from './module_provider.ts';
 import { Module, ModuleDescriptor, ModuleRoute } from "./sapp.ts";
 import { IOError } from './errors.ts';
 
@@ -7,6 +8,8 @@ export const SAPP_FILE_EXTENSION = '.sa';
 const FILE_PREFIX = 'file:';
 
 export class FileSystemModuleProvider implements ModuleProvider {
+  constructor(private readonly generator: Generator) { }
+
   private assertFileRoute(requester: ModuleRoute, parts: string[]): string {
     if (!requester.startsWith(FILE_PREFIX)) {
       throw new IOError('Only filesystem modules can request filesystem routes');
@@ -23,13 +26,14 @@ export class FileSystemModuleProvider implements ModuleProvider {
     return fileRoute;
   }
 
-  getRoute(requester: ModuleRoute, descriptor: ModuleDescriptor): ModuleRoute {
-    return `file:${this.assertFileRoute(requester, descriptor)}`;
+  getRoute(requester: ModuleRoute, descriptor: ModuleDescriptor): Promise<ModuleRoute> {
+    const path: `file:${string}` = `file:${this.assertFileRoute(requester, descriptor)}`;
+    return Promise.resolve(path);
   }
   
-  getModule(requester: ModuleRoute, descriptor: ModuleDescriptor, generator: Generator): Module {
+  async getModule(requester: ModuleRoute, descriptor: ModuleDescriptor): Promise<Module> {
     const route = this.assertFileRoute(requester, descriptor);
-    const source = new TextDecoder().decode(Deno.readFileSync(route));
-    return generator.generateModule(`file:${route}`, source.toString());
+    const source = new TextDecoder().decode(await Deno.readFile(route));
+    return this.generator.generateModule(`file:${route}`, source.toString(), this);
   }
 }

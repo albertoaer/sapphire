@@ -13,20 +13,20 @@ const INFO = `
 import type { Compiler } from '../compiler/compiler.ts';
 import { WasmCompiler } from '../compiler/sapp_wasm/mod.ts';
 import { WasmVM } from '../compiler/wasm_vm/mod.ts';
-import { FileSystemModuleProvider } from '../compiler/deps.ts';
+import { FileSystemModuleProvider } from '../compiler/filesystem_module_provider.ts';
 
 const [file, ...args] = Deno.args;
 
 if (!file) {
   console.log(INFO);
 } else {
-  const fsp = new FileSystemModuleProvider();
-  const compiler: Compiler = new WasmCompiler(fsp);
+  const compiler: Compiler = new WasmCompiler();
+  const fsp = new FileSystemModuleProvider(compiler.createGenerator());
   const entry_point = "main0";
 
   try {
     
-    const code = compiler.compile(file);
+    const code = await compiler.compile(fsp, file);
     const vm = await WasmVM.create(code);
     const fn = vm.exports[entry_point] as CallableFunction | undefined;
 

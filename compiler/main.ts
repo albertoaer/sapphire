@@ -2,17 +2,17 @@ import flags from './cli.ts';
 import type { Compiler } from './compiler.ts';
 import { WasmCompiler } from './sapp_wasm/mod.ts';
 import { WasmVM } from './wasm_vm/mod.ts';
-import { FileSystemModuleProvider } from './deps.ts';
+import { FileSystemModuleProvider } from './filesystem_module_provider.ts';
 
 if (!flags.file || (!flags.print && !flags.output && !flags.call)) {
   console.log('Nothing to do');
   Deno.exit(-1);
 }
 
-const fsp = new FileSystemModuleProvider();
-const compiler: Compiler = new WasmCompiler(fsp);
+const compiler: Compiler = new WasmCompiler();
+const fsp = new FileSystemModuleProvider(compiler.createGenerator());
 
-const code = compiler.compile(flags.file);
+const code = await compiler.compile(fsp, flags.file);
 
 if (flags.print) {
   console.log(...code);

@@ -6,11 +6,7 @@ import { DependencyError } from '../errors.ts';
 import { ModuleInspector, DefInspector } from './inspector.ts';
 import { EnsuredDefinitionGenerator } from './ensured_definition.ts';
 import { DefinitionGenerator } from "./definition.ts";
-
-export interface ModuleProvider {
-  getRoute(requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor): sapp.ModuleRoute;
-  getModule(requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor, generator: Generator): sapp.Module;
-}
+import { ModuleProvider } from '../module_provider.ts';
 
 interface GeneratedEnv {
   globals: Map<string, Global>,
@@ -21,35 +17,36 @@ export class Generator {
   private readonly inProgressModules: Set<sapp.ModuleRoute> = new Set();
   private readonly storedModules: Map<sapp.ModuleRoute, sapp.Module> = new Map();
 
-  constructor(private readonly provider?: ModuleProvider, private kernel?: sapp.Module) { }
+  constructor(private kernel?: sapp.Module) { }
 
   overwriteKernel(kernel: sapp.Module | null) {
     this.kernel = kernel ?? undefined;
   }
 
-  generateKnownModule(requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor): sapp.Module {
-    if (this.provider === undefined)
-      throw new DependencyError('Importing is not allowed');
-
-    const route = this.provider.getRoute(requester, descriptor);
+  private async generateKnownModule(
+    requester: sapp.ModuleRoute, descriptor: sapp.ModuleDescriptor, provider: ModuleProvider
+  ): Promise<sapp.Module> {
+    const route = await provider.getRoute(requester, descriptor);
 
     if (this.inProgressModules.has(route))
       throw new DependencyError(`Circular dependency trying to import ${route}`);
       
     if (!this.storedModules.has(route)) {
       this.inProgressModules.add(route);
-      const module = this.provider.getModule(requester, descriptor, this);
+      const module = await provider.getModule(requester, descriptor);
       this.storedModules.set(route, module);
       this.inProgressModules.delete(route);
     }
     return this.storedModules.get(route) as sapp.Module;
   }
 
-  generateModule(route: sapp.ModuleRoute, source: TokenList | string): sapp.Module {
+  async generateModule(
+    route: sapp.ModuleRoute, source: TokenList | string, provider: ModuleProvider
+  ): Promise<sapp.Module> {
     const parser = new Parser(typeof source === 'string' ? { source } : { tokens: source });
     parser.parse();
     
-    const { globals, exported } = this.generateEnv(route, parser.dependencies);
+    const { globals, exported } = await this.generateEnv(route, parser.dependencies, provider);
     
     const generator = new ModuleGenerator(globals);
 
@@ -73,7 +70,9 @@ export class Generator {
     else return new DefinitionGenerator(route, env, parsed);
   }
 
-  private generateEnv(requester: sapp.ModuleRoute, dependencies: parser.Import[]): GeneratedEnv {
+  private async generateEnv(
+    requester: sapp.ModuleRoute, dependencies: parser.Import[], provider: ModuleProvider
+  ): Promise<GeneratedEnv> {
     const globals: Map<string, Global> = new Map();
     const exported: Map<string, sapp.Def> = new Map();
 
@@ -82,7 +81,7 @@ export class Generator {
       globals.set('kernel', new ModuleInspector(this.kernel));
     }
     for (const imp of dependencies) {
-      const module = this.generateKnownModule(requester, imp.route);
+      const module = await this.generateKnownModule(requester, imp.route, provider);
       if (imp.mode === 'named') globals.set(imp.name, new ModuleInspector(module));
       else {
         for (const [name, def] of module.defs) {

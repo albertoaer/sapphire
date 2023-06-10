@@ -1,6 +1,6 @@
 import * as path from 'https://deno.land/std@0.177.0/path/mod.ts';
 import { wasm } from './common.ts';
-import { Generator, ModuleProvider } from '../generator/generator.ts';
+import { Generator } from '../generator/generator.ts';
 import { Kernel } from './env/kernel.ts';
 import type { Compiler } from '../compiler.ts';
 import { ExpressionCompiler } from './expression.ts';
@@ -9,16 +9,18 @@ import { EnvironmentInjector } from './env/mod.ts';
 import { CompilerError } from '../errors.ts';
 import { MemoryHelper } from './memory.ts';
 import { constants as vmc } from '../wasm_vm/mod.ts';
+import { ModuleProvider } from '../module_provider.ts';
 
 export class WasmCompiler implements Compiler {
-  constructor(private readonly provider: ModuleProvider) { }
+  createGenerator(): Generator {
+    return new Generator(Kernel);
+  }
 
-  compile(file: string): Uint8Array {
-    const generator = new Generator(this.provider, Kernel);
+  async compile(provider: ModuleProvider, file: string): Promise<Uint8Array> {
     // The first module route must be correctly generated
     const modroute: `file:${string}` = `file:${path.isAbsolute(file) ? file : path.join(Deno.cwd(), file)}`;
     const filename = path.basename(file);
-    const generated = generator.generateKnownModule(modroute, [filename]);
+    const generated = await provider.getModule(modroute, [filename]);
     const module = new wasm.WasmModule();
     module.configureMemory({
       limits: { min: 1 },
