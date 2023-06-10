@@ -7,13 +7,14 @@ import { ModuleInspector, DefInspector } from './inspector.ts';
 import { EnsuredDefinitionGenerator } from './ensured_definition.ts';
 import { DefinitionGenerator } from "./definition.ts";
 import { ModuleProvider } from '../module_provider.ts';
+import { ModuleGenerator as GlobalModuleGenerator } from '../module_generator.ts';
 
 interface GeneratedEnv {
   globals: Map<string, Global>,
   exported: sapp.Def[]
 }
 
-export class Generator {
+export class Generator implements GlobalModuleGenerator {
   private readonly inProgressModules: Set<sapp.ModuleRoute> = new Set();
   private readonly storedModules: Map<sapp.ModuleRoute, sapp.Module> = new Map();
 

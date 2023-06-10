@@ -1,7 +1,7 @@
 import { ModuleProvider } from './module_provider.ts';
-import { Generator } from './generator/generator.ts';
+import { ModuleGenerator } from './module_generator.ts';
 
 export interface Compiler {
-  createGenerator(): Generator;
+  createGenerator(): ModuleGenerator;
   compile(provider: ModuleProvider, file: string): Promise<Uint8Array>;
 }

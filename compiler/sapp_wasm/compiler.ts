@@ -10,9 +10,10 @@ import { CompilerError } from '../errors.ts';
 import { MemoryHelper } from './memory.ts';
 import { constants as vmc } from '../wasm_vm/mod.ts';
 import { ModuleProvider } from '../module_provider.ts';
+import { ModuleGenerator } from '../module_generator.ts';
 
 export class WasmCompiler implements Compiler {
-  createGenerator(): Generator {
+  createGenerator(): ModuleGenerator {
     return new Generator(Kernel);
   }
 

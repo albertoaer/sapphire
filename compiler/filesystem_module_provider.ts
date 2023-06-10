@@ -1,14 +1,14 @@
 import * as path from "https://deno.land/std@0.177.0/path/mod.ts";
-import { Generator } from './generator/generator.ts';
 import { ModuleProvider } from './module_provider.ts';
 import { Module, ModuleDescriptor, ModuleRoute } from "./sapp.ts";
 import { IOError } from './errors.ts';
+import { ModuleGenerator } from "./module_generator.ts";
 
 export const SAPP_FILE_EXTENSION = '.sa';
 const FILE_PREFIX = 'file:';
 
 export class FileSystemModuleProvider implements ModuleProvider {
-  constructor(private readonly generator: Generator) { }
+  constructor(private readonly generator: ModuleGenerator) { }
 
   private assertFileRoute(requester: ModuleRoute, parts: string[]): string {
     if (!requester.startsWith(FILE_PREFIX)) {
