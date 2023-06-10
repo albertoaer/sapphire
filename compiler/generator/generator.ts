@@ -10,7 +10,7 @@ import { ModuleProvider } from '../module_provider.ts';
 
 interface GeneratedEnv {
   globals: Map<string, Global>,
-  exported: Map<string, sapp.Def>
+  exported: sapp.Def[]
 }
 
 export class Generator {
@@ -58,9 +58,8 @@ export class Generator {
       );
       
     const builded = generator.build(route);
-    for (const [name, value] of exported)
-      if (!builded.defs.has(name))
-        builded.defs.set(name, value);
+    for (const def of exported)
+      builded.exports.push(def);
 
     return builded;
   }
@@ -74,7 +73,7 @@ export class Generator {
     requester: sapp.ModuleRoute, dependencies: parser.Import[], provider: ModuleProvider
   ): Promise<GeneratedEnv> {
     const globals: Map<string, Global> = new Map();
-    const exported: Map<string, sapp.Def> = new Map();
+    const exported: sapp.Def[] = [];
 
     if (this.kernel) {
       this.kernel.defs.forEach((v,k) => globals.set(k, new DefInspector(v)));
@@ -87,8 +86,8 @@ export class Generator {
         for (const [name, def] of module.defs) {
           globals.set(name, new DefInspector(def));
         }
-        if (imp.mode === 'export_into') for (const [name, def] of module.defs) {
-          exported.set(name, def);
+        if (imp.mode === 'export_into') for (const def of module.exports) {
+          exported.push(def);
         }
       }
     }

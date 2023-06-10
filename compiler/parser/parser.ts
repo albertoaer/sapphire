@@ -288,11 +288,13 @@ export class Parser {
         { route: route, meta, mode: 'named', name: this.tokens.expectNext({ type: 'identifier' }).value }
       );
     } else if (this.tokens.nextIs({ value: 'into' })) {
-      this.dependencies.push({ route: route, meta, mode: 'into' });
-    } /* else if (this.tokens.nextIs({ value: 'export' })) { // FIXME: collision with exported definition after statement
-      this.tokens.expectNext({ value: 'into' });
-      this.dependencies.push({ route: route, meta, mode: 'export_into' });
-    } */ else {
+      if (this.tokens.nextIs({ value: 'with' })) {
+        this.tokens.expectNext({ value: 'export' });
+        this.dependencies.push({ route: route, meta, mode: 'export_into' });
+      } else {
+        this.dependencies.push({ route: route, meta, mode: 'into' });
+      }
+    } else {
       this.dependencies.push({ route: route, meta, mode: 'named', name: route.at(-1) as string });
     }
   }
