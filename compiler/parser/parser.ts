@@ -283,17 +283,18 @@ export class Parser {
   parseUse() {
     const meta = this.tokens.createMeta();
     const route = this.parseName(this.tokens.expectNext({ type: 'identifier' }).value);
-    if (this.tokens.nextIs({ value: 'as' }))
+    if (this.tokens.nextIs({ value: 'as' })) {
       this.dependencies.push(
         { route: route, meta, mode: 'named', name: this.tokens.expectNext({ type: 'identifier' }).value }
       );
-    else if (this.tokens.nextIs({ value: 'into' }))
+    } else if (this.tokens.nextIs({ value: 'into' })) {
       this.dependencies.push({ route: route, meta, mode: 'into' });
-      else if (this.tokens.nextIs({ value: 'export' })) {
-        this.tokens.expectNext({ value: 'into' });
-        this.dependencies.push({ route: route, meta, mode: 'export_into' });
-      } else
+    } /* else if (this.tokens.nextIs({ value: 'export' })) { // FIXME: collision with exported definition after statement
+      this.tokens.expectNext({ value: 'into' });
+      this.dependencies.push({ route: route, meta, mode: 'export_into' });
+    } */ else {
       this.dependencies.push({ route: route, meta, mode: 'named', name: route.at(-1) as string });
+    }
   }
 
   parseDef(mods: Set<typeof DefModifiers[number]>) {
