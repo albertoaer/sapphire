@@ -123,7 +123,7 @@ export const typeArrayEquals = (a: Type[], b: Type[]): boolean =>
 export type FunctionReference = number
 export type FunctionRoute = string[]
 
-export type FunctionBody = Expression | FunctionReference | FunctionRoute;
+export type FunctionBody = [Expression | undefined] | FunctionReference | FunctionRoute;
 
 export interface Func<T extends FunctionBody = FunctionBody> {
   readonly inputSignature: Type[]; // Parameter types
@@ -139,7 +139,7 @@ export function isRefFunc(func: Func): func is Func<FunctionReference> {
 }
 
 export function isRouteFunc(func: Func): func is Func<FunctionRoute> {
-  return Array.isArray(func.source);
+  return Array.isArray(func.source) && func.source.length > 1 && typeof func.source[0] === 'string';
 }
 
 export interface Def {

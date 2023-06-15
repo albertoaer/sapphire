@@ -59,7 +59,7 @@ export class Locals {
 }
 
 class Function implements sapp.Func {
-  private _source: sapp.Expression | undefined = undefined;
+  private _source: [sapp.Expression | undefined] = [undefined];
   private _locals: sapp.Type[] | undefined = undefined;
 
   constructor(
@@ -71,7 +71,7 @@ class Function implements sapp.Func {
   ) { }
 
   complete(source: sapp.Expression, locals: sapp.Type[]) {
-    this._source = source;
+    this._source[0] = source;
     this._locals = locals;
     if (this.output !== undefined && !this.output.isEquals(source.type))
       throw new ParserError(
@@ -80,8 +80,7 @@ class Function implements sapp.Func {
     this.output = source.type;
   }
 
-  get source(): sapp.Expression {
-    if (this._source === undefined) throw new ParserError(this.meta.line, 'Unknown source');
+  get source(): [sapp.Expression | undefined] {
     return this._source;
   }
 

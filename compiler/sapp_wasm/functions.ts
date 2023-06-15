@@ -16,7 +16,7 @@ function signatureOf(func: sapp.Func): [wasm.WasmType[], wasm.WasmType[]] {
 
 export class FunctionBind {
   constructor(
-    private readonly func: sapp.Func<sapp.Expression>,
+    private readonly func: sapp.Func<[sapp.Expression]>,
     private readonly wfunc: wasm.WasmFunction,
     private readonly signature: [wasm.WasmType[], wasm.WasmType[]]
   ) { }
@@ -26,7 +26,7 @@ export class FunctionBind {
       this.func.locals ? this.func.locals.map(convertToWasmType) : [],
       this.signature[0].length
     );
-    const code = apply(this.func.source, locals);
+    const code = apply(this.func.source[0], locals);
     this.wfunc.body = { locals: locals.locals, code };
   }
 
@@ -68,7 +68,9 @@ export class FunctionCollector {
       const signature = signatureOf(func);
       const wfunc = this.module.define(signature[0], signature[1]);
       this.functions.set(func, wfunc);
-      this.defined.push(new FunctionBind(func as sapp.Func<sapp.Expression>, wfunc, signature));
+      const castedFunc = func as sapp.Func<[sapp.Expression | undefined]>
+      if (castedFunc.source[0] === undefined) throw new CompilerError('Wasm', 'Function does not have body: ' + func);
+      this.defined.push(new FunctionBind(castedFunc as sapp.Func<[sapp.Expression]>, wfunc, signature));
     }
     
     // Dependencies are processed after function to prevent loops
