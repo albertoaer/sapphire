@@ -1,5 +1,5 @@
 import * as path from 'https://deno.land/std@0.177.0/path/mod.ts';
-import { wasm } from './common.ts';
+import { convertToWasmType, wasm } from './common.ts';
 import { Generator } from '../generator/generator.ts';
 import { Kernel } from './env/kernel.ts';
 import type { Compiler } from '../compiler.ts';
@@ -11,6 +11,7 @@ import { MemoryHelper } from './memory.ts';
 import { constants as vmc } from '../wasm_vm/mod.ts';
 import { ModuleProvider } from '../module_provider.ts';
 import { ModuleGenerator } from '../module_generator.ts';
+import { WasmExpression } from '../wasm/expressions.ts';
 
 export class WasmCompiler implements Compiler {
   createGenerator(): ModuleGenerator {
@@ -39,9 +40,12 @@ export class WasmCompiler implements Compiler {
 
     for (const func of collector)
       func.build((source, locals) => {
-        const expr = new ExpressionCompiler(manager, locals, memory);
-        expr.submit(source);
-        return expr.expression.code;
+        const exprCompiler = new ExpressionCompiler(manager, locals, memory, 0);
+        exprCompiler.submit(source);
+        let expr = exprCompiler.expression;
+        if (func.ownedFunc.isRecursive)
+          expr = new WasmExpression().pushLoop(expr, source.type.isVoid ? null : convertToWasmType(source.type));
+        return expr.code;
       });
     for (const def of generated.exports) {
       for (const [name, func] of def.funcs) {

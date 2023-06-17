@@ -61,6 +61,7 @@ export class Locals {
 class Function implements sapp.Func {
   private _source: [sapp.Expression | undefined] = [undefined];
   private _locals: sapp.Type[] | undefined = undefined;
+  private recursive = false;
 
   constructor(
     public readonly inputSignature: sapp.Type[],
@@ -70,7 +71,8 @@ class Function implements sapp.Func {
     public readonly struct?: sapp.Type[],
   ) { }
 
-  complete(source: sapp.Expression, locals: sapp.Type[]) {
+  complete(source: sapp.Expression, locals: sapp.Type[], recursive: boolean) {
+    this.recursive = recursive;
     this._source[0] = source;
     this._locals = locals;
     if (this.output !== undefined && !this.output.isEquals(source.type))
@@ -93,6 +95,10 @@ class Function implements sapp.Func {
     if (this.output === undefined) throw new ParserError(this.meta.line, 'Function output could not be determined');
     return this.output;
   }
+
+  get isRecursive(): boolean {
+    return this.recursive;
+  }
 }
 
 export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
@@ -104,6 +110,7 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
   private readonly _lcls: Locals = new Locals();
   private readonly _deps: Set<sapp.Func | sapp.Func[]> = new Set();
   private _treated: boolean;
+  private recursive: boolean;
 
   constructor(
     func: parser.Func,
@@ -123,6 +130,15 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
     this._expr = new ExpressionGenerator(this, func.source, this._deps);
     this._func = new Function(this.inputs, func.meta, this._deps, output, struct);
     this._treated = false;
+    this.recursive = false;
+  }
+
+  enableRecursivity() {
+    this.recursive = true;
+  }
+
+  getType(): sapp.Type {
+    return this._func.outputSignature;
   }
   
   scoped<T>(action: () => T): T {
@@ -185,7 +201,7 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
   generate() {
     if (!this._treated) {
       this._treated = true;
-      this._func.complete(this._expr.process(), this._lcls.collect());
+      this._func.complete(this._expr.process(), this._lcls.collect(), this.recursive);
     }
   }
 

@@ -1,5 +1,5 @@
 import { sapp, parser, FunctionEnv, NameRoute, FetchedInstanceFunc, FuncMismatch } from './common.ts';
-import { FeatureError, MatchTypeError } from "../errors.ts";
+import { MatchTypeError } from "../errors.ts";
 import { InstancedDefInspector } from './inspector.ts';
 
 export class ExpressionGenerator {
@@ -64,7 +64,9 @@ export class ExpressionGenerator {
   }
 
   private processTailCall(ex: parser.Expression & { id: 'tail_call' }): sapp.Expression {
-    throw new FeatureError(ex.meta.line, 'Tail Call');
+    const args = ex.args.map(x => this.processEx(x));
+    this.env.enableRecursivity();
+    return { id: 'tail_call', args, type: this.env.getType() };
   }
   
   private processGroup({ exprs, meta }: parser.Expression & { id: 'group' }): sapp.Expression {

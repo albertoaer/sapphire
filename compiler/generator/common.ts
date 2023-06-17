@@ -86,6 +86,8 @@ export interface FunctionEnv extends FuncFetcher {
 
   getValue(name: NameRoute): sapp.Expression;
   setValue(name: NameRoute, tp: sapp.Type): number;
+  getType(): sapp.Type;
+  enableRecursivity(): void;
 
   scoped<T>(action: () => T): T;
 }

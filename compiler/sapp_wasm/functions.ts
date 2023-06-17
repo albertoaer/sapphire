@@ -30,6 +30,10 @@ export class FunctionBind {
     this.wfunc.body = { locals: locals.locals, code };
   }
 
+  get ownedFunc(): sapp.Func {
+    return this.func;
+  }
+
   get completed(): boolean {
     return this.wfunc.completed;
   }

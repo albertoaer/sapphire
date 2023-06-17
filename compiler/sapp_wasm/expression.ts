@@ -11,11 +11,12 @@ export class ExpressionCompiler {
   constructor(
     private readonly resolutor: FunctionResolutor,
     private readonly locals: Locals,
-    private readonly memory: MemoryHelper
+    private readonly memory: MemoryHelper,
+    private readonly loopLabel?: number
   ) { }
 
   private fastProcess(ex: sapp.Expression): wasm.WasmExpression {
-    const comp = new ExpressionCompiler(this.resolutor, this.locals, this.memory);
+    const comp = new ExpressionCompiler(this.resolutor, this.locals, this.memory, this.loopLabel);
     comp.submit(ex);
     return comp.expression;
   }
@@ -44,6 +45,12 @@ export class ExpressionCompiler {
       ...wasm.encodings.unsignedLEB128(resolved.typeIdx), ...wasm.encodings.unsignedLEB128(resolved.tableIdx)
     );
     this.locals.freeAux(aux);
+  }
+
+  private processTailCall({ args }: sapp.Expression & { id: 'tail_call' }) {
+    if (this.loopLabel === undefined) throw new CompilerError('Wasm', 'Undetected loop');
+    // TODO: Asign args to locals
+    this.expression.pushRaw(0x0C, this.loopLabel);
   }
 
   private processIf(ex: sapp.Expression & { id: 'if' }) {
@@ -152,6 +159,9 @@ export class ExpressionCompiler {
         break;
       case 'call_instanced':
         this.processCallInstanced(ex);
+        break;
+      case 'tail_call':
+        this.processTailCall(ex);
         break;
       case 'if':
         this.processIf(ex);

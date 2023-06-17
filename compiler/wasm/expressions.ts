@@ -39,6 +39,13 @@ export class WasmExpression {
     return this;
   }
 
+  pushLoop(
+    cond: WasmExpression, type: WasmType | null
+  ): WasmExpression {
+    this.data.push(0x03, type ?? 0x40, ...cond.code, 0x0b);
+    return this;
+  }
+
   pushNumber(num: number, kind: 'int' | 'uint' | 'float', bits: 32 | 64): WasmExpression {
     switch (kind) {
       case 'int':
