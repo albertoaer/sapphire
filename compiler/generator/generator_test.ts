@@ -61,7 +61,7 @@ generator.overwriteKernel({
   exports: []
 })
 
-const genTest = (src: string): Module => generator.generateModule('virtual:test', src);
+const genTest = (src: string): Promise<Module> => generator.generateModule('virtual:test', src);
 
 Deno.test('must generate, expression targeted', () => {
   const codes = [

@@ -42,7 +42,7 @@ export class Generator implements GlobalModuleGenerator {
   }
 
   async generateModule(
-    route: sapp.ModuleRoute, source: TokenList | string, provider: ModuleProvider
+    route: sapp.ModuleRoute, source: TokenList | string, provider?: ModuleProvider
   ): Promise<sapp.Module> {
     const parser = new Parser(typeof source === 'string' ? { source } : { tokens: source });
     parser.parse();
@@ -71,7 +71,7 @@ export class Generator implements GlobalModuleGenerator {
   }
 
   private async generateEnv(
-    requester: sapp.ModuleRoute, dependencies: parser.Import[], provider: ModuleProvider
+    requester: sapp.ModuleRoute, dependencies: parser.Import[], provider: ModuleProvider | undefined
   ): Promise<GeneratedEnv> {
     const globals: Map<string, Global> = new Map();
     const exported: sapp.Def[] = [];
@@ -80,8 +80,11 @@ export class Generator implements GlobalModuleGenerator {
       this.kernel.defs.forEach((v,k) => globals.set(k, new DefInspector(v)));
       globals.set('kernel', new ModuleInspector(this.kernel));
     }
+
+    if (dependencies.length > 0 && provider === undefined)
+      throw new Error('Dependencies are not supported without provider')    
     for (const imp of dependencies) {
-      const module = await this.generateKnownModule(requester, imp.route, provider);
+      const module = await this.generateKnownModule(requester, imp.route, provider!);
       if (imp.mode === 'named') globals.set(imp.name, new ModuleInspector(module));
       else {
         for (const [name, def] of module.defs) {
