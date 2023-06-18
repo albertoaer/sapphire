@@ -3,7 +3,7 @@ import { CompilerError } from '../errors.ts';
 import type { FunctionResolutor } from './functions.ts';
 import { MemoryHelper } from './memory.ts';
 import { Locals } from './locals.ts';
-import { buildStructuredType, duplicate, getLow32, getHigh32 } from './utils.ts';
+import { buildStructuredType, getLow32, getHigh32 } from './utils.ts';
 
 export class ExpressionCompiler {
   public readonly expression = new wasm.WasmExpression();
@@ -37,14 +37,14 @@ export class ExpressionCompiler {
 
   private processCallInstanced({ args, func, owner }: sapp.Expression & { id: 'call_instanced' }) {
     const resolved = this.resolutor.useFuncTable(func);
-    for (const arg of args) this.expression.pushExpr(this.fastProcess(arg));
     const aux = this.locals.requireAux(wasm.WasmType.I64);
-    this.expression.pushExpr(this.fastProcess(owner)).pushRaw(
-      ...duplicate(this.locals.wrap(aux)),
-      ...getLow32(), 0x11,
-      ...wasm.encodings.unsignedLEB128(resolved.typeIdx), ...wasm.encodings.unsignedLEB128(resolved.tableIdx)
-    );
+    this.expression.pushExpr(this.fastProcess(owner)).pushRaw(0x22, this.locals.wrap(aux));
+    for (const arg of args) this.expression.pushExpr(this.fastProcess(arg));
+    this.expression.pushRaw(0x20, this.locals.wrap(aux), ...getLow32());
     this.locals.freeAux(aux);
+    this.expression.pushRaw(
+      0x11, ...wasm.encodings.unsignedLEB128(resolved.typeIdx), ...wasm.encodings.unsignedLEB128(resolved.tableIdx)
+    );
   }
 
   private processTailCall({ args }: sapp.Expression & { id: 'tail_call' }) {
