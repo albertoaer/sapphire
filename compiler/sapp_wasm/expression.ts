@@ -12,11 +12,11 @@ export class ExpressionCompiler {
     private readonly resolutor: FunctionResolutor,
     private readonly locals: Locals,
     private readonly memory: MemoryHelper,
-    private readonly loopLabel?: number
+    private readonly depth: number
   ) { }
 
-  private fastProcess(ex: sapp.Expression): wasm.WasmExpression {
-    const comp = new ExpressionCompiler(this.resolutor, this.locals, this.memory, this.loopLabel);
+  private fastProcess(ex: sapp.Expression, new_block = false): wasm.WasmExpression {
+    const comp = new ExpressionCompiler(this.resolutor, this.locals, this.memory, this.depth + (new_block ? 1 : 0));
     comp.submit(ex);
     return comp.expression;
   }
@@ -48,17 +48,16 @@ export class ExpressionCompiler {
   }
 
   private processTailCall({ args }: sapp.Expression & { id: 'tail_call' }) {
-    if (this.loopLabel === undefined) throw new CompilerError('Wasm', 'Undetected loop');
-    // TODO: Asign args to locals
-    this.expression.pushRaw(0x0C, this.loopLabel);
+    args.forEach((arg, idx) => this.expression.pushExpr(this.fastProcess(arg)).pushRaw(0x21, idx));
+    this.expression.pushRaw(0x0C, this.depth);
   }
 
   private processIf(ex: sapp.Expression & { id: 'if' }) {
     this.expression.pushIf(
       this.fastProcess(ex.cond),
       ex.then.type.isVoid ? null : convertToWasmType(ex.then.type),
-      this.fastProcess(ex.then),
-      ex.else ? this.fastProcess(ex.else) : undefined
+      this.fastProcess(ex.then, true),
+      ex.else ? this.fastProcess(ex.else, true) : undefined
     );
   }
 

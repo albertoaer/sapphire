@@ -135,7 +135,7 @@ export interface Func<T extends FunctionBody = FunctionBody> {
   readonly locals?: Type[]; // Defined locals with their type
   readonly source: T; // Body
   readonly dependsOn?: Set<Func | Func[]>; // Functions called inside the function
-  readonly isRecursive: boolean;
+  readonly isRecursive?: boolean;
 }
 
 export function isRefFunc(func: Func): func is Func<FunctionReference> {

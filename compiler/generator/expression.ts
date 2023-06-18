@@ -65,8 +65,10 @@ export class ExpressionGenerator {
 
   private processTailCall(ex: parser.Expression & { id: 'tail_call' }): sapp.Expression {
     const args = ex.args.map(x => this.processEx(x));
+    if (!sapp.typeArrayEquals(args.map(x => x.type), this.env.getArgumentsType()))
+      throw ex.meta.error('Arguments type does not match function arguments');
     this.env.enableRecursivity();
-    return { id: 'tail_call', args, type: this.env.getType() };
+    return { id: 'tail_call', args, type: this.env.getReturnType() };
   }
   
   private processGroup({ exprs, meta }: parser.Expression & { id: 'group' }): sapp.Expression {

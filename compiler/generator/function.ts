@@ -137,7 +137,11 @@ export class FunctionGenerator implements FunctionEnv, FunctionBuilder {
     this.recursive = true;
   }
 
-  getType(): sapp.Type {
+  getArgumentsType(): sapp.Type[] {
+    return this._func.inputSignature;
+  }
+
+  getReturnType(): sapp.Type {
     return this._func.outputSignature;
   }
   

@@ -40,10 +40,11 @@ export class WasmCompiler implements Compiler {
 
     for (const func of collector)
       func.build((source, locals) => {
+        const isRecursive = func.ownedFunc.isRecursive;
         const exprCompiler = new ExpressionCompiler(manager, locals, memory, 0);
         exprCompiler.submit(source);
         let expr = exprCompiler.expression;
-        if (func.ownedFunc.isRecursive)
+        if (isRecursive)
           expr = new WasmExpression().pushLoop(expr, source.type.isVoid ? null : convertToWasmType(source.type));
         return expr.code;
       });
