@@ -121,7 +121,7 @@ export class ExpressionGenerator {
   }
   
   private processLiteral({ value }: parser.Expression & { id: 'literal' }): sapp.Expression {
-    return { id: 'literal', value, type: new sapp.Type(value.type) };
+    return { id: 'literal', value: { type: value.type, value: value.value }, type: new sapp.Type(value.type) };
   }
 
   private processValue({ name }: parser.Expression & { id: 'value' }): sapp.Expression {
