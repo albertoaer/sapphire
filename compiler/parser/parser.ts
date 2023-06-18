@@ -324,7 +324,7 @@ export class Parser {
         else if (this.tokens.nextIs({ value: '(' })) functions.push(this.parseFunc('', mods));
         else if (this.tokens.nextIs({ value: '[' })) functions.push(this.parseMethod(mods));
         else if (mods.size > 0) throw new ParserError(this.tokens.line, 'Expecting function');
-        else if (!this.tokens.nextIs({ value: ';' })) this.tokens.unexpect();
+        else if (!this.tokens.nextIs({ value: ';' })) this.tokens.expectNext({ value: 'end' });
       }
       while (this.tokens.nextIs({ value: ';' }));
     }
