@@ -1,0 +1,32 @@
+def Person struct string, i32;
+
+  (string name, i32 age) new[name, age];
+
+  [_ name, _ age] display()
+    "Name: ":str_ref:echo,
+    name:str_ref:echo,
+    "Age: ":str_ref:echo,
+    age:echo
+  ;
+
+end
+
+def PersonBuilder struct string, i32;
+
+  () new["", 0];
+
+  [_ name, _ age] get() Person(name, age);
+
+  [_ name, _] age(i32 age) new[name, age];
+
+  [_, _ age] name(string name) new[name, age];
+
+end
+
+export def main()
+  PersonBuilder()
+    .name("Someone")
+    .age(22)
+    .get()
+    .display()
+end
