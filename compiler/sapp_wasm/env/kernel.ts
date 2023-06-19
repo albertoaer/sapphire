@@ -9,7 +9,6 @@ function funcToDef(name: string, funcs: sapp.Func[]): [string, sapp.Def] {
     route,
     funcs: new Map([['', funcs ]]),
     instanceFuncs: new Map(),
-    instanceOverloads: 0,
     name
   }]
 }

@@ -10,7 +10,7 @@ export const RawInstructions: { [id: number]: number[] | [number[], number[]] } 
   [References.f64_add]: [0xA0],
 
   [References.i32_sub]: [0x6B],
-  [References.i64_sub]: [0x7B],
+  [References.i64_sub]: [0x7D],
   [References.f32_sub]: [0x93],
   [References.f64_sub]: [0xA1],
 
@@ -46,7 +46,7 @@ export const RawInstructions: { [id: number]: number[] | [number[], number[]] } 
   [References.f64_to_f32]: [0xB6],
 
   [References.i32_nqz]: [0x45, 0x45],
-  [References.i64_nqz]: [0x50, 0x50],
+  [References.i64_nqz]: [0x50, 0x45],
 
   [References.i32_neg]: [[0x41, 0], [0x6B]],
   [References.i64_neg]: [[0x42, 0], [0x7D]],
